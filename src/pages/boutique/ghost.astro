@@ -1,0 +1,245 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import BottomNav from '../../components/BottomNav.astro';
+import coinsIcon from '../../assets/icon/coins.svg';
+import retour from '../../assets/icon/icone_retour_acceuil.svg';
+import gameboy from '../../assets/icon/gameboy_gestughost.svg';
+import ghostDefault from '../../assets/icon/ghost_acceuil.svg';
+---
+
+<Layout title="Gestu — Gestu Ghost">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: #5B8CFF;"
+    x-data="ghostBoutique()"
+    x-init="init()"
+    data-ghost-default={ghostDefault.src}
+  >
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 pt-4">
+      <div class="flex items-center gap-2">
+        <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
+        <span class="text-xl font-bold text-white" x-text="coins">—</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="h-4 w-36 overflow-hidden rounded-full bg-white/20">
+          <div class="h-full rounded-full bg-purple-400 transition-all" :style="`width: ${xpPercent}%`"></div>
+        </div>
+        <a href="/dashboard">
+          <img src={retour.src} alt="Accueil" class="h-9 w-9" />
+        </a>
+      </div>
+    </div>
+
+    <!-- Zone gameboy + infos -->
+    <div class="flex flex-1 flex-col items-center justify-center gap-0">
+
+      <!-- SVG gameboy -->
+      <div class="relative">
+        <img
+          src={gameboy.src}
+          alt="Gameboy"
+          class="w-[65vw] max-w-[260px] object-contain select-none pointer-events-none"
+          style="max-height: 58vh;"
+        />
+
+        <!-- Ghost superposé sur l'écran -->
+        <div
+          class="absolute flex items-center justify-center"
+          style="top: 13%; left: 50%; transform: translateX(-50%); width: 42%; height: 36%;"
+        >
+          <template x-if="loading">
+            <div class="text-white text-xs animate-pulse">...</div>
+          </template>
+          <template x-if="!loading">
+            <div class="relative flex items-center justify-center w-full h-full">
+              <img
+                :src="currentGhost?.imageUrl || defaultGhost"
+                :alt="currentGhost?.nom || 'Ghost'"
+                class="w-full h-full object-contain drop-shadow-lg"
+              />
+              <template x-if="currentGhost && !currentGhost.possede">
+                <div class="absolute bottom-0 right-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="#1a2a8a" opacity="0.9">
+                    <path d="M12 1C9.243 1 7 3.243 7 6v2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6c0-2.757-2.243-5-5-5zm0 2c1.654 0 3 1.346 3 3v2H9V6c0-1.654 1.346-3 3-3zm1 10.723V16h-2v-2.277A1.993 1.993 0 0 1 10 12a2 2 0 1 1 3 1.723z"/>
+                  </svg>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- Zone cliquable bouton rouge -->
+        <button
+          @click="next()"
+          class="absolute rounded-full transition-transform active:scale-90"
+          style="bottom: 20%; right: 14%; width: 14%; height: 10%; background: transparent; cursor: pointer;"
+          aria-label="Ghost suivant"
+        ></button>
+
+        <!-- Zone cliquable croix directionnelle -->
+        <button
+          @click="next()"
+          class="absolute transition-transform active:scale-90"
+          style="bottom: 20%; left: 14%; width: 22%; height: 16%; background: transparent; cursor: pointer;"
+          aria-label="Ghost suivant (croix)"
+        ></button>
+
+        <!-- Bandeau infos en haut de la gameboy -->
+        <div
+          class="absolute flex items-center justify-between px-4 py-2"
+          style="top: 4%; left: 11%; right: 11%; border-radius: 8px; background: linear-gradient(135deg, #1a1a6e, #0d0d3b); border: 1.5px solid #4B4BFF;"
+        >
+          <span class="text-white font-bold text-sm leading-tight truncate" x-text="currentGhost?.nom || '...'"></span>
+          <template x-if="currentGhost && !currentGhost.possede">
+            <span class="text-white font-black text-sm ml-2 whitespace-nowrap" x-text="(currentGhost?.prix || 0) + ' coins'"></span>
+          </template>
+          <template x-if="currentGhost && currentGhost.possede">
+            <span class="text-green-400 font-bold text-sm ml-2 whitespace-nowrap">✓ Possédé</span>
+          </template>
+        </div>
+      </div>
+
+      <!-- Bouton acheter sous la gameboy -->
+      <div class="mt-3 flex justify-center w-[65vw] max-w-[260px]">
+        <template x-if="currentGhost && !currentGhost.possede">
+          <button
+            @click="acheter()"
+            class="w-full rounded-xl py-2 text-sm font-bold text-white transition-transform active:scale-95"
+            style="background: linear-gradient(135deg, #7c3aed, #4f46e5);"
+            x-text="'Acheter pour ' + (currentGhost?.prix || 0) + ' coins'"
+          ></button>
+        </template>
+        <template x-if="currentGhost && currentGhost.possede">
+          <div class="w-full rounded-xl py-2 text-center text-sm font-bold text-green-400" style="background: rgba(52,211,153,0.1); border: 1px solid #34d399;">
+            Déjà dans ta collection ✓
+          </div>
+        </template>
+      </div>
+
+    </div>
+
+    <!-- Message feedback -->
+    <div
+      x-show="message"
+      x-transition
+      class="fixed bottom-24 left-1/2 -translate-x-1/2 rounded-xl px-6 py-3 text-white font-bold text-sm shadow-lg z-50"
+      :class="messageType === 'error' ? 'bg-red-600' : 'bg-green-600'"
+      x-text="message"
+    ></div>
+
+    <BottomNav active="boutique" />
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  const DEV_GHOSTS = [
+    { id: 'dev1', nom: 'Ghost Bleu', prix: 100, imageUrl: '', possede: true },
+    { id: 'dev2', nom: 'Ghost Rouge', prix: 200, imageUrl: '', possede: false },
+    { id: 'dev3', nom: 'Ghost Violet', prix: 300, imageUrl: '', possede: false },
+  ];
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('ghostBoutique', () => ({
+      coins: 0,
+      xp: 0,
+      xpMax: 100,
+      xpPercent: 0,
+      ghosts: [] as any[],
+      currentIndex: 0,
+      loading: true,
+      message: '',
+      messageType: 'success',
+      defaultGhost: '',
+
+      get currentGhost() {
+        return this.ghosts[this.currentIndex] ?? null;
+      },
+
+      async init() {
+        // Récupère l'image par défaut depuis le data attribute
+        this.defaultGhost = document.querySelector('[data-ghost-default]')?.getAttribute('data-ghost-default') || '';
+
+        const DEV_MODE = true;
+        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
+        this.coins = user?.coins ?? 0;
+        this.xp = user?.xp ?? 0;
+        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        await this.loadGhosts();
+      },
+
+      async loadGhosts() {
+        try {
+          this.loading = true;
+          const records = await pb.collection('Objets_boutique').getFullList({
+            filter: 'type_objet = "skin"',
+            sort: 'nom_objet',
+          });
+
+          let possedes: string[] = [];
+          if (pb.authStore.isValid) {
+            try {
+              const achats = await pb.collection('Achats').getFullList({
+                filter: `utilisateur = "${pb.authStore.model?.id}"`,
+              });
+              possedes = achats.map((a: any) => a.objet);
+            } catch {}
+          }
+
+          this.ghosts = records.map((r: any) => ({
+            id: r.id,
+            nom: r.nom_objet,
+            prix: r.prix,
+            imageUrl: r.image ? pb.files.getURL(r, r.image) : '',
+            possede: possedes.includes(r.id),
+          }));
+
+          if (this.ghosts.length === 0) this.ghosts = DEV_GHOSTS;
+        } catch {
+          this.ghosts = DEV_GHOSTS;
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      next() {
+        if (this.ghosts.length === 0) return;
+        this.currentIndex = (this.currentIndex + 1) % this.ghosts.length;
+      },
+
+      async acheter() {
+        if (!pb.authStore.isValid) {
+          this.showMessage('Connecte-toi pour acheter !', 'error');
+          return;
+        }
+        const ghost = this.currentGhost;
+        if (!ghost || ghost.possede) return;
+        if (this.coins < ghost.prix) {
+          this.showMessage('Pas assez de coins !', 'error');
+          return;
+        }
+        try {
+          await pb.collection('Achats').create({
+            utilisateur: pb.authStore.model?.id,
+            objet: ghost.id,
+            date_achat: new Date().toISOString(),
+          });
+          this.coins -= ghost.prix;
+          this.ghosts[this.currentIndex].possede = true;
+          this.showMessage('Ghost acheté !', 'success');
+        } catch {
+          this.showMessage("Erreur lors de l'achat", 'error');
+        }
+      },
+
+      showMessage(msg: string, type: string) {
+        this.message = msg;
+        this.messageType = type;
+        setTimeout(() => { this.message = ''; }, 3000);
+      },
+    }));
+  });
+</script>
