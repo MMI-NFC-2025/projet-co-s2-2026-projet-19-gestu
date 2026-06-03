@@ -40,7 +40,7 @@ import ghostDefault from '../../assets/icon/ghost_acceuil.svg';
         <img
           src={gameboy.src}
           alt="Gameboy"
-          class="w-[65vw] max-w-[260px] object-contain select-none pointer-events-none"
+          class="w-[65vw] max-w-65 object-contain select-none pointer-events-none"
           style="max-height: 58vh;"
         />
 
@@ -102,7 +102,7 @@ import ghostDefault from '../../assets/icon/ghost_acceuil.svg';
       </div>
 
       <!-- Bouton acheter sous la gameboy -->
-      <div class="mt-3 flex justify-center w-[65vw] max-w-[260px]">
+      <div class="mt-3 flex justify-center w-[65vw] max-w-65">
         <template x-if="currentGhost && !currentGhost.possede">
           <button
             @click="acheter()"
