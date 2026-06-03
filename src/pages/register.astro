@@ -34,26 +34,6 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
         class="mb-4 rounded-lg bg-red-500/20 px-4 py-2 text-center text-sm text-red-300"
       ></div>
 
-      <!-- Prenom -->
-      <label class="mb-1 text-lg font-bold text-white">Prenom</label>
-      <input
-        type="text"
-        x-model="prenom"
-        placeholder="Ton prénom"
-        class="mb-5 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
-        autocomplete="given-name"
-      />
-
-      <!-- Nom -->
-      <label class="mb-1 text-lg font-bold text-white">Nom</label>
-      <input
-        type="text"
-        x-model="nom"
-        placeholder="Ton nom"
-        class="mb-5 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
-        autocomplete="family-name"
-      />
-
       <!-- Pseudo -->
       <label class="mb-1 text-lg font-bold text-white">Pseudo</label>
       <input
@@ -130,9 +110,7 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
   import pb from '../lib/pocketbase.js';
 
   document.addEventListener('alpine:init', () => {
-    window.Alpine.data('registerForm', () => ({
-      prenom: '',
-      nom: '',
+    (window as any).Alpine.data('registerForm', () => ({
       pseudo: '',
       email: '',
       age: '',
@@ -145,7 +123,7 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
         this.erreur = '';
 
         // Validation basique
-        if (!this.prenom || !this.nom || !this.pseudo || !this.email || !this.age || !this.motdepasse || !this.confirmation) {
+        if (!this.pseudo || !this.email || !this.age || !this.motdepasse || !this.confirmation) {
           this.erreur = 'Remplis tous les champs.';
           return;
         }
@@ -160,27 +138,36 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
 
         this.chargement = true;
         try {
-          // TODO: PocketBase — création du compte utilisateur
-          // Le champ "username" correspond au Pseudo dans PocketBase
+          // TODO: PocketBase — création du compte dans la collection Utilisateurs
           await pb.collection('Utilisateurs').create({
-            username: this.pseudo,
             email: this.email,
             password: this.motdepasse,
             passwordConfirm: this.confirmation,
-            prenom: this.prenom,
-            Nom: this.nom,
-            Pseudo: this.pseudo,
-            Age: parseInt(this.age),
-            Xp: 0,
+            pseudo: this.pseudo,
+            age: parseInt(this.age),
+            xp: 0,
+            coins: 0,
+            date_creation_compte: new Date().toISOString(),
           });
 
-          // Connexion automatique après inscription
-          await pb.collection('Utilisateurs').authWithPassword(this.pseudo, this.motdepasse);
-
-          // TODO: remplacer /dashboard par la vraie route de l'app après inscription
-          window.location.href = '/dashboard';
-        } catch (e) {
-          this.erreur = e?.data?.message || 'Une erreur est survenue. Vérifie tes informations.';
+          // Connexion automatique après inscription (si échec, redirige vers /login)
+          try {
+            await pb.collection('Utilisateurs').authWithPassword(this.pseudo, this.motdepasse);
+            window.location.href = '/dashboard';
+          } catch {
+            window.location.href = '/login';
+          }
+        } catch (e: any) {
+          const err = e;
+          console.error('Register error:', JSON.stringify(err?.response || err));
+          const data = err?.response?.data || {};
+          this.erreur = data?.pseudo?.message
+            || data?.email?.message
+            || data?.password?.message
+            || data?.age?.message
+            || err?.response?.message
+            || err?.message
+            || 'Une erreur est survenue.';
         } finally {
           this.chargement = false;
         }

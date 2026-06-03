@@ -7,7 +7,7 @@ import btnConnecter from '../assets/icon/se_connecter.svg';
 
 <Layout title="Gestu — Se connecter">
   <div
-    class="relative flex h-screen w-full flex-col overflow-hidden"
+    class="relative flex min-h-screen w-full flex-col overflow-y-auto"
     style="background: radial-gradient(circle at 50% 50%, #4343BA 6%, #1F1F8F 29%, #0D0D3B 83%);"
     x-data="loginForm()"
   >
@@ -34,14 +34,14 @@ import btnConnecter from '../assets/icon/se_connecter.svg';
         class="mb-4 rounded-lg bg-red-500/20 px-4 py-2 text-center text-sm text-red-300"
       ></div>
 
-      <!-- Champ Pseudo -->
-      <label class="mb-1 font-bold text-white text-lg">Pseudo</label>
+      <!-- Champ Email -->
+      <label class="mb-1 font-bold text-white text-lg">Adresse mail</label>
       <input
-        type="text"
+        type="email"
         x-model="pseudo"
-        placeholder="Ton pseudo"
+        placeholder="ton@email.com"
         class="mb-6 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
-        autocomplete="username"
+        autocomplete="email"
       />
 
       <!-- Champ Mot de passe -->
@@ -79,7 +79,7 @@ import btnConnecter from '../assets/icon/se_connecter.svg';
   import pb from '../lib/pocketbase.js';
 
   document.addEventListener('alpine:init', () => {
-    window.Alpine.data('loginForm', () => ({
+    (window as any).Alpine.data('loginForm', () => ({
       pseudo: '',
       motdepasse: '',
       erreur: '',
@@ -98,8 +98,10 @@ import btnConnecter from '../assets/icon/se_connecter.svg';
           await pb.collection('Utilisateurs').authWithPassword(this.pseudo, this.motdepasse);
           // TODO: remplacer /dashboard par la vraie route de l'app
           window.location.href = '/dashboard';
-        } catch (e) {
-          this.erreur = 'Pseudo ou mot de passe incorrect.';
+        } catch (e: any) {
+          const err = e;
+          console.error('Login error:', JSON.stringify(err?.response || err));
+          this.erreur = err?.response?.message || err?.message || 'Pseudo ou mot de passe incorrect.';
         } finally {
           this.chargement = false;
         }

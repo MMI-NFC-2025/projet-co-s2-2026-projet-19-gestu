@@ -1,0 +1,98 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BottomNav from '../components/BottomNav.astro';
+import coinsIcon from '../assets/icon/coins.svg';
+import cercle from '../assets/icon/cercle_appli.svg';
+import ghost from '../assets/icon/ghost_acceuil.svg';
+import retour from '../assets/icon/icone_retour_acceuil.svg';
+---
+
+<Layout title="Gestu — Dashboard">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: linear-gradient(180deg, #0D0D3B 0%, #1a0a4a 100%);"
+    x-data="dashboardData()"
+    x-init="init()"
+  >
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 pt-4">
+
+      <!-- Coins (gauche) -->
+      <div class="flex items-center gap-2">
+        <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
+        <!-- TODO: champ "coins" récupéré depuis PocketBase Utilisateurs -->
+        <span class="text-xl font-bold text-white" x-text="coins">—</span>
+      </div>
+
+      <!-- Barre XP + icône retour (droite) -->
+      <div class="flex items-center gap-2">
+        <!-- Barre d'expérience -->
+        <!-- TODO: champ "Xp" récupéré depuis PocketBase Utilisateurs, xpMax à définir -->
+        <div class="h-4 w-36 overflow-hidden rounded-full bg-white/20">
+          <div
+            class="h-full rounded-full bg-purple-400 transition-all"
+            :style="`width: ${xpPercent}%`"
+          ></div>
+        </div>
+        <!-- Icône retour au menu (cette page) -->
+        <a href="/dashboard">
+          <img src={retour.src} alt="Menu" class="h-9 w-9" />
+        </a>
+      </div>
+    </div>
+
+    <!-- Zone centrale : cercles + ghost -->
+    <div class="relative flex flex-1 items-center justify-center">
+
+      <!-- Cercles concentriques violets -->
+      <img
+        src={cercle.src}
+        alt=""
+        class="absolute h-[130vw] w-[130vw] max-h-162.5 max-w-162.5 object-contain"
+      />
+
+      <!-- Ghost cliquable → page personnalisation (à développer) -->
+      <!-- TODO: remplacer /personnalisation par la vraie route quand la page sera créée -->
+      <a href="/personnalisation" class="relative z-10 transition-transform active:scale-95">
+        <img
+          src={ghost.src}
+          alt="Mon personnage"
+          class="h-44 w-44 object-contain"
+        />
+      </a>
+    </div>
+
+    <!-- Navigation bas -->
+    <BottomNav active="accueil" />
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('dashboardData', () => ({
+      coins: 0,
+      xp: 0,
+      xpMax: 100, // TODO: adapter selon le système de niveaux
+      xpPercent: 0,
+
+      async init() {
+        // DEV MODE : bypass auth pour tester sans PocketBase
+        const DEV_MODE = true;
+
+        if (!DEV_MODE && !pb.authStore.isValid) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const user = DEV_MODE ? { pseudo: 'DevUser', coins: 150, xp: 420 } : pb.authStore.model;
+        this.coins = user?.coins ?? 0;
+        this.xp = user?.xp ?? 0;
+        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+      }
+    }));
+  });
+</script>
