@@ -20,14 +20,21 @@ import arcade from '../assets/icon/arcade_jeux.svg';
         <span class="text-xl font-bold text-[#0D0D3B]" x-text="coins">—</span>
       </div>
       <div class="flex items-center gap-2">
-        <div class="h-4 w-36 overflow-hidden rounded-full bg-[#0D0D3B]/20">
+        <div
+          class="h-4 w-36 overflow-hidden rounded-full bg-[#0D0D3B]/20"
+          role="progressbar"
+          aria-label="Points d'expérience"
+          :aria-valuenow="xp"
+          :aria-valuemax="xpMax"
+          aria-valuemin="0"
+        >
           <div
             class="h-full rounded-full bg-[#1F1F8F] transition-all"
             :style="`width: ${xpPercent}%`"
           ></div>
         </div>
-        <a href="/dashboard" class="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F1F8F] shadow-md">
-          <img src={retour.src} alt="Accueil" class="h-7 w-7" />
+        <a href="/dashboard" aria-label="Retour au tableau de bord" class="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F1F8F] shadow-md">
+          <img src={retour.src} alt="" class="h-7 w-7" />
         </a>
       </div>
     </div>

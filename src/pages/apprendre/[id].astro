@@ -1,0 +1,408 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import retour from '../../assets/icon/icone_retour_acceuil.svg';
+
+export async function getStaticPaths() {
+  try {
+    const { default: PocketBase } = await import('pocketbase');
+    const pb = new PocketBase('http://127.0.0.1:8090');
+    const cats = await pb.collection('Categories_signe').getFullList({ requestKey: null });
+    return cats.map((c: any) => ({ params: { id: c.id } }));
+  } catch {
+    return [{ params: { id: '_dev' } }];
+  }
+}
+
+const { id } = Astro.params;
+---
+
+<Layout title="Gestu — Apprendre">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: radial-gradient(circle at 50% 50%, #4343BA 6%, #1F1F8F 29%, #0D0D3B 83%);"
+    x-data={`categorieData('${id}')`}
+    x-init="init()"
+  >
+
+    <!-- Liste des mots scrollable -->
+    <main class="flex-1 overflow-y-auto px-8 py-8 pb-28">
+
+      <!-- Chargement -->
+      <div x-show="loading" class="flex h-40 items-center justify-center">
+        <div class="h-10 w-10 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+      </div>
+
+      <!-- Boutons mots -->
+      <div x-show="!loading" class="flex flex-col gap-4">
+        <template x-for="signe in signes" :key="signe.id">
+          <button
+            @click="ouvrirVideo(signe)"
+            :aria-label="`Voir la vidéo du signe : ${signe.mot}`"
+            class="w-full cursor-pointer text-left transition-transform active:translate-y-1 active:shadow-none"
+            style="
+              background: linear-gradient(160deg, #9B5EFF 0%, #6B28D4 100%);
+              border: 2.5px solid rgba(255,255,255,0.75);
+              border-radius: 18px;
+              box-shadow: 0 6px 0 #2D0E6E;
+              padding: 18px 24px;
+              font-family: 'Press Start 2P', monospace;
+              font-size: 18px;
+              color: white;
+              text-transform: capitalize;
+            "
+            x-text="signe.mot"
+          ></button>
+        </template>
+
+        <!-- Aucun signe -->
+        <p
+          x-show="!loading && signes.length === 0"
+          class="py-10 text-center text-white/40"
+          style="font-family: 'Press Start 2P', monospace; font-size: 12px;"
+        >
+          Aucun signe disponible
+        </p>
+      </div>
+    </main>
+
+    <!-- Bouton retour fixé en bas à gauche -->
+    <div class="fixed bottom-6 left-6 z-20">
+      <a href="/apprendre" aria-label="Retour aux catégories">
+        <img src={retour.src} alt="" class="h-10 w-10 opacity-80 transition-opacity hover:opacity-100" />
+      </a>
+    </div>
+
+    <!-- Modal vidéo -->
+    <div
+      x-show="modal.open"
+      x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-150"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+      class="fixed inset-0 z-50 flex items-center justify-center px-6"
+      style="background: rgba(0,0,0,0.88);"
+      @click.self="fermerVideo()"
+      role="dialog"
+      :aria-label="modal.mot ? `Vidéo du signe : ${modal.mot}` : 'Vidéo'"
+      aria-modal="true"
+    >
+      <div class="w-full max-w-sm">
+        <!-- Titre du signe -->
+        <p
+          x-text="modal.mot"
+          class="mb-4 text-center text-white capitalize"
+          style="font-family: 'Press Start 2P', monospace; font-size: 16px;"
+        ></p>
+
+        <!-- Vidéo -->
+        <video
+          x-ref="videoEl"
+          :src="modal.videoUrl"
+          class="w-full rounded-2xl bg-black"
+          controls
+          playsinline
+          preload="metadata"
+          style="max-height: 58vh;"
+        ></video>
+
+        <!-- Bouton fermer -->
+        <button
+          @click="fermerVideo()"
+          class="mt-5 w-full rounded-2xl py-4 text-center text-white transition-opacity active:opacity-70"
+          style="
+            background: linear-gradient(160deg, #9B5EFF 0%, #6B28D4 100%);
+            border: 2.5px solid rgba(255,255,255,0.75);
+            box-shadow: 0 5px 0 #2D0E6E;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 13px;
+          "
+          aria-label="Fermer la vidéo"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('categorieData', (categorieId: string) => ({
+      signes: [] as any[],
+      loading: true,
+      modal: { open: false, mot: '', videoUrl: '' },
+
+      async init() {
+        try {
+          const records = await pb.collection('Signes').getFullList({
+            filter: `categorie = "${categorieId}"`,
+            sort: 'mot',
+          });
+
+          this.signes = records.map((s: any) => ({
+            id: s.id,
+            mot: s.mot ?? '',
+            videoUrl: s.video ? pb.files.getURL(s, s.video) + `?t=${s.updated}` : '',
+          }));
+        } catch (e: any) {
+          console.warn('Erreur PocketBase:', e);
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      ouvrirVideo(signe: any) {
+        if (!signe.videoUrl) return;
+        this.modal = { open: true, mot: signe.mot, videoUrl: signe.videoUrl };
+        this.$nextTick(() => {
+          const v = this.$refs.videoEl as HTMLVideoElement;
+          v?.load();
+          v?.play().catch(() => {});
+        });
+      },
+
+      fermerVideo() {
+        (this.$refs.videoEl as HTMLVideoElement)?.pause();
+        this.modal = { open: false, mot: '', videoUrl: '' };
+      },
+    }));
+  });
+</script>
+
+
+<Layout title="Gestu — Apprendre">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: linear-gradient(180deg, #0D0D3B 0%, #1a0a4a 100%);"
+    x-data={`categorieData('${id}')`}
+    x-init="init()"
+  >
+
+    <!-- Image de fond gameboy -->
+    <img
+      src={gameboyFond.src}
+      alt=""
+      aria-hidden="true"
+      class="absolute inset-0 h-full w-full object-cover object-top opacity-60 pointer-events-none select-none"
+    />
+
+    <!-- Header -->
+    <header class="relative z-10 flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
+      <div class="flex items-center gap-2">
+        <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
+        <span class="text-xl font-bold text-white" x-text="coins">—</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div
+          class="h-4 w-36 overflow-hidden rounded-full bg-white/20"
+          role="progressbar"
+          aria-label="Points d'expérience"
+          :aria-valuenow="xp"
+          :aria-valuemax="xpMax"
+          aria-valuemin="0"
+        >
+          <div class="h-full rounded-full bg-purple-400 transition-all" :style="`width: ${xpPercent}%`"></div>
+        </div>
+        <a href="/apprendre" aria-label="Retour aux catégories">
+          <img src={retour.src} alt="" class="h-9 w-9" />
+        </a>
+      </div>
+    </header>
+
+    <!-- Liste des leçons scrollable -->
+    <main class="relative z-10 flex-1 overflow-y-auto px-4 pb-20 pt-2">
+
+      <!-- Chargement -->
+      <div x-show="loading" class="flex h-40 items-center justify-center">
+        <div class="h-10 w-10 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+      </div>
+
+      <div x-show="!loading" class="flex flex-col gap-2">
+        <template x-for="lecon in lecons" :key="lecon.id">
+          <div>
+            <!-- Image de la leçon — même style que apprendre.astro -->
+            <button
+              class="w-full text-left"
+              @click="toggle(lecon)"
+              :aria-expanded="lecon.open"
+              :aria-controls="`signes-${lecon.id}`"
+              aria-label="Voir les signes de cette leçon"
+            >
+              <div style="height: 110px;">
+                <img
+                  x-show="lecon.imageUrl"
+                  :src="lecon.imageUrl"
+                  :alt="lecon.titre || 'Leçon'"
+                  class="h-full object-contain object-left"
+                  @error="lecon.imageUrl = ''"
+                />
+                <!-- Fallback si pas d'image -->
+                <div
+                  x-show="!lecon.imageUrl"
+                  class="flex h-full items-center px-4"
+                  style="background: rgba(67,67,219,0.3);"
+                >
+                  <span x-text="lecon.titre" class="text-lg font-bold text-white"></span>
+                </div>
+              </div>
+            </button>
+
+            <!-- Accordéon : liste des signes -->
+            <div
+              :id="`signes-${lecon.id}`"
+              x-show="lecon.open"
+              x-transition:enter="transition ease-out duration-200"
+              x-transition:enter-start="opacity-0 -translate-y-2"
+              x-transition:enter-end="opacity-100 translate-y-0"
+              class="flex flex-col gap-1.5 pb-2 pt-1"
+            >
+              <template x-for="signe in lecon.signes" :key="signe.id">
+                <button
+                  class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-white transition-opacity active:opacity-70"
+                  style="background: rgba(67,67,219,0.35);"
+                  @click="ouvrirVideo(signe)"
+                  :aria-label="`Voir la vidéo du signe : ${signe.mot}`"
+                >
+                  <span class="flex-1 text-base font-bold capitalize" x-text="signe.mot"></span>
+                  <!-- Icône lecture -->
+                  <svg class="h-5 w-5 shrink-0 text-purple-300" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.344-5.891a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                  </svg>
+                </button>
+              </template>
+
+              <!-- Aucun signe -->
+              <p x-show="lecon.signes.length === 0" class="px-4 text-sm text-white/40">
+                Aucun signe disponible
+              </p>
+            </div>
+          </div>
+        </template>
+
+        <!-- Aucune leçon -->
+        <div x-show="!loading && lecons.length === 0" class="py-10 text-center text-white/40">
+          Aucune leçon dans cette catégorie
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal vidéo -->
+    <div
+      x-show="modal.open"
+      x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-150"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+      class="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style="background: rgba(0,0,0,0.85);"
+      @click.self="fermerVideo()"
+      role="dialog"
+      :aria-label="modal.mot ? `Vidéo du signe : ${modal.mot}` : 'Vidéo du signe'"
+      aria-modal="true"
+    >
+      <div class="w-full max-w-sm">
+        <!-- Titre du signe -->
+        <p x-text="modal.mot" class="mb-3 text-center text-xl font-bold capitalize text-white"></p>
+
+        <!-- Vidéo -->
+        <video
+          x-ref="videoEl"
+          :src="modal.videoUrl"
+          class="w-full rounded-2xl bg-black"
+          controls
+          playsinline
+          preload="metadata"
+          style="max-height: 60vh;"
+        ></video>
+
+        <!-- Bouton fermer -->
+        <button
+          @click="fermerVideo()"
+          class="mt-4 w-full rounded-xl bg-purple-600 py-3 text-center font-bold text-white transition-opacity active:opacity-70"
+          aria-label="Fermer la vidéo"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+
+    <BottomNav active="apprendre" />
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('categorieData', (categorieId: string) => ({
+      coins: 0,
+      xp: 0,
+      xpMax: 100,
+      xpPercent: 0,
+      lecons: [] as any[],
+      loading: true,
+      modal: { open: false, mot: '', videoUrl: '' },
+
+      async init() {
+        const DEV_MODE = true;
+        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
+        this.coins = user?.coins ?? 0;
+        this.xp = user?.xp ?? 0;
+        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+
+        // Lire l'id depuis l'URL si getStaticPaths a renvoyé _dev
+        const urlId = window.location.pathname.split('/').pop() || categorieId;
+        const id = urlId === '_dev' ? urlId : categorieId;
+
+        try {
+          const records = await pb.collection('lecons').getFullList({
+            filter: `categorie = "${id}"`,
+            expand: 'signe',
+          });
+
+          this.lecons = records.map((r: any) => ({
+            id: r.id,
+            titre: r.titre ?? '',
+            imageUrl: r.image ? pb.files.getURL(r, r.image) + `?t=${r.updated}` : '',
+            open: false,
+            signes: (r.expand?.signe ?? []).map((s: any) => ({
+              id: s.id,
+              mot: s.mot ?? s.nom ?? s.titre ?? '',
+              videoUrl: s.video ? pb.files.getURL(s, s.video) + `?t=${s.updated}` : '',
+            })),
+          }));
+        } catch (e: any) {
+          console.warn('PocketBase lecons error:', e);
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      toggle(lecon: any) {
+        lecon.open = !lecon.open;
+      },
+
+      ouvrirVideo(signe: any) {
+        if (!signe.videoUrl) return;
+        this.modal = { open: true, mot: signe.mot, videoUrl: signe.videoUrl };
+        this.$nextTick(() => {
+          const v = this.$refs.videoEl as HTMLVideoElement;
+          v?.load();
+          v?.play().catch(() => {});
+        });
+      },
+
+      fermerVideo() {
+        (this.$refs.videoEl as HTMLVideoElement)?.pause();
+        this.modal = { open: false, mot: '', videoUrl: '' };
+      },
+    }));
+  });
+</script>

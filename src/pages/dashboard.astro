@@ -29,15 +29,22 @@ import retour from '../assets/icon/icone_retour_acceuil.svg';
       <div class="flex items-center gap-2">
         <!-- Barre d'expérience -->
         <!-- TODO: champ "Xp" récupéré depuis PocketBase Utilisateurs, xpMax à définir -->
-        <div class="h-4 w-36 overflow-hidden rounded-full bg-white/20">
+        <div
+          class="h-4 w-36 overflow-hidden rounded-full bg-white/20"
+          role="progressbar"
+          aria-label="Points d'expérience"
+          :aria-valuenow="xp"
+          :aria-valuemax="xpMax"
+          aria-valuemin="0"
+        >
           <div
             class="h-full rounded-full bg-purple-400 transition-all"
             :style="`width: ${xpPercent}%`"
           ></div>
         </div>
         <!-- Icône retour au menu (cette page) -->
-        <a href="/dashboard">
-          <img src={retour.src} alt="Menu" class="h-9 w-9" />
+        <a href="/dashboard" aria-label="Tableau de bord">
+          <img src={retour.src} alt="" class="h-9 w-9" />
         </a>
       </div>
     </div>
@@ -54,7 +61,7 @@ import retour from '../assets/icon/icone_retour_acceuil.svg';
 
       <!-- Ghost cliquable → page personnalisation (à développer) -->
       <!-- TODO: remplacer /personnalisation par la vraie route quand la page sera créée -->
-      <a href="/personnalisation" class="relative z-10 transition-transform active:scale-95">
+      <a href="/personnalisation" aria-label="Personnaliser mon personnage" class="relative z-10 transition-transform active:scale-95">
         <img
           src={ghost.src}
           alt="Mon personnage"

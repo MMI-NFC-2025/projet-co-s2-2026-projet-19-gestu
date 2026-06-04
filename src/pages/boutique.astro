@@ -27,14 +27,21 @@ import gestuCoins from '../assets/icon/gestucoins_boutique.svg';
 
       <!-- Barre XP + icône maison → retour dashboard -->
       <div class="flex items-center gap-2">
-        <div class="h-4 w-36 overflow-hidden rounded-full bg-white/20">
+        <div
+          class="h-4 w-36 overflow-hidden rounded-full bg-white/20"
+          role="progressbar"
+          aria-label="Points d'expérience"
+          :aria-valuenow="xp"
+          :aria-valuemax="xpMax"
+          aria-valuemin="0"
+        >
           <div
             class="h-full rounded-full bg-purple-400 transition-all"
             :style="`width: ${xpPercent}%`"
           ></div>
         </div>
-        <a href="/dashboard">
-          <img src={retour.src} alt="Accueil" class="h-9 w-9" />
+        <a href="/dashboard" aria-label="Retour au tableau de bord">
+          <img src={retour.src} alt="" class="h-9 w-9" />
         </a>
       </div>
     </div>

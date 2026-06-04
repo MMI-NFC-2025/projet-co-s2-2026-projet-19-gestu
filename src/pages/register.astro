@@ -31,12 +31,15 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
       <div
         x-show="erreur"
         x-text="erreur"
+        role="alert"
+        aria-live="assertive"
         class="mb-4 rounded-lg bg-red-500/20 px-4 py-2 text-center text-sm text-red-300"
       ></div>
 
       <!-- Pseudo -->
-      <label class="mb-1 text-lg font-bold text-white">Pseudo</label>
+      <label for="reg-pseudo" class="mb-1 text-lg font-bold text-white">Pseudo</label>
       <input
+        id="reg-pseudo"
         type="text"
         x-model="pseudo"
         placeholder="Ton pseudo"
@@ -45,8 +48,9 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
       />
 
       <!-- Email (requis par PocketBase pour l'authentification) -->
-      <label class="mb-1 text-lg font-bold text-white">Email</label>
+      <label for="reg-email" class="mb-1 text-lg font-bold text-white">Email</label>
       <input
+        id="reg-email"
         type="email"
         x-model="email"
         placeholder="ton@email.com"
@@ -55,8 +59,9 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
       />
 
       <!-- Age -->
-      <label class="mb-1 text-lg font-bold text-white">Age</label>
+      <label for="reg-age" class="mb-1 text-lg font-bold text-white">Age</label>
       <input
+        id="reg-age"
         type="number"
         x-model="age"
         placeholder="Ton âge"
@@ -66,8 +71,9 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
       />
 
       <!-- Mot de passe -->
-      <label class="mb-1 text-lg font-bold text-white">Mot de passe</label>
+      <label for="reg-password" class="mb-1 text-lg font-bold text-white">Mot de passe</label>
       <input
+        id="reg-password"
         type="password"
         x-model="motdepasse"
         placeholder="••••••••"
@@ -76,8 +82,9 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
       />
 
       <!-- Confirmer le mot de passe -->
-      <label class="mb-1 text-lg font-bold text-white">Confirmer le mot de passe</label>
+      <label for="reg-confirm" class="mb-1 text-lg font-bold text-white">Confirmer le mot de passe</label>
       <input
+        id="reg-confirm"
         type="password"
         x-model="confirmation"
         placeholder="••••••••"
