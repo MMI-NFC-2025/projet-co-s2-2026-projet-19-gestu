@@ -1,7 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import coinsIcon from '../assets/icon/coins.svg';
-import retour from '../assets/icon/icone_retour_acceuil.svg';
+import PageHeader from '../components/PageHeader.astro';
 import arcade from '../assets/icon/arcade_jeux.svg';
 ---
 
@@ -13,34 +12,10 @@ import arcade from '../assets/icon/arcade_jeux.svg';
     x-init="init()"
   >
 
-    <!-- Header -->
-    <div class="flex items-center justify-between px-4 pt-4">
-      <div class="flex items-center gap-2">
-        <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
-        <span class="text-xl font-bold text-[#0D0D3B]" x-text="coins">—</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div
-          class="h-4 w-36 overflow-hidden rounded-full bg-[#0D0D3B]/20"
-          role="progressbar"
-          aria-label="Points d'expérience"
-          :aria-valuenow="xp"
-          :aria-valuemax="xpMax"
-          aria-valuemin="0"
-        >
-          <div
-            class="h-full rounded-full bg-[#1F1F8F] transition-all"
-            :style="`width: ${xpPercent}%`"
-          ></div>
-        </div>
-        <a href="/dashboard" aria-label="Retour au tableau de bord" class="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F1F8F] shadow-md">
-          <img src={retour.src} alt="" class="h-7 w-7" />
-        </a>
-      </div>
-    </div>
+    <PageHeader retourHref="/dashboard" retourLabel="Retour au tableau de bord" theme="light" />
 
     <!-- Zone centrale : borne d'arcade avec overlays -->
-    <div class="relative mx-auto flex flex-1 items-center justify-center" style="width: 100vw; max-width: 36rem;">
+    <main class="relative mx-auto flex flex-1 items-center justify-center" style="width: 100vw; max-width: 36rem;">
       <div class="relative w-full">
 
         <!-- Image borne -->
@@ -110,7 +85,7 @@ import arcade from '../assets/icon/arcade_jeux.svg';
         ></button>
 
       </div>
-    </div>
+    </main>
 
   </div>
 </Layout>
@@ -139,7 +114,7 @@ import arcade from '../assets/icon/arcade_jeux.svg';
         this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
 
         try {
-          const records = await pb.collection('Mini_jeux').getFullList({ sort: 'ordre' });
+          const records = await pb.collection('Mini_jeux').getFullList({ sort: 'ordre', requestKey: null });
           this.games = records.map((r: any) => ({
             id: r.id,
             nom: r.nom,

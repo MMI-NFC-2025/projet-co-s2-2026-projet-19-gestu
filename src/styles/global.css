@@ -2,8 +2,31 @@
 
 @theme {
   --font-sans: 'Josefin Sans', sans-serif;
+
+  /* Couleurs principales de l'application */
+  --color-gestu-bg:           #0D0D3B;
+  --color-gestu-bg-light:     #1a0a4a;
+  --color-gestu-purple:       #7C3AED;
+  --color-gestu-purple-light: #9B5EFF;
+  --color-gestu-purple-dark:  #3b0764;
+  --color-gestu-blue:         #4343BA;
+  --color-gestu-blue-dark:    #1F1F8F;
 }
 
 body {
   font-family: 'Josefin Sans', sans-serif;
+}
+
+/* Typographie pixel pour les écrans de jeu */
+.font-game {
+  font-family: 'Press Start 2P', monospace;
+}
+
+/* Accessibilité : respect de la préférence de mouvement réduit */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

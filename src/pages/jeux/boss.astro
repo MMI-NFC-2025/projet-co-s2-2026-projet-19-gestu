@@ -1,11 +1,316 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import ghostIcon from '../../assets/icon/ghost_acceuil.svg';
+import retour from '../../assets/icon/fleche_retour.svg';
+import fondBoss from '../../assets/img/fond_jeux_boss.avif';
+import degatImg from '../../assets/img/degat.avif';
 ---
+
 <Layout title="Gestu — Boss">
-  <div class="flex h-screen w-full flex-col items-center justify-center gap-6"
-    style="background: radial-gradient(circle at 50% 50%, #4343BA 6%, #1F1F8F 29%, #0D0D3B 83%);">
-    <p class="text-4xl font-bold text-white">🎮 Boss</p>
-    <p class="text-white/60">Mini-jeu en cours de développement…</p>
-    <a href="/jeux" class="rounded-full bg-[#4343DB] px-6 py-3 font-bold text-white">← Retour</a>
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden select-none"
+    x-data="bossGame()"
+    x-init="init()"
+  >
+
+    <!-- Fond ville nuit -->
+    <img
+      src={fondBoss.src}
+      alt=""
+      aria-hidden="true"
+      class="absolute inset-0 h-full w-full object-cover pointer-events-none"
+    />
+    <!-- Overlay sombre -->
+    <div class="absolute inset-0 pointer-events-none" style="background: rgba(10,5,40,0.45);"></div>
+
+    <!-- ══════════════ ÉCRAN DE JEU ══════════════ -->
+    <div x-show="phase === 'jeu'" class="relative z-10 flex h-full flex-col">
+
+      <!-- Mot à deviner (bandeau haut) -->
+      <div class="shrink-0 flex justify-center pt-5 pb-2 px-6">
+        <div
+          class="px-8 py-2"
+          style="
+            background: #7C3AED;
+            border: 3px solid #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 0 #3b0764;
+          "
+        >
+          <p
+            class="text-white capitalize"
+            style="font-family: 'Press Start 2P', monospace; font-size: 22px; line-height: 1;"
+            x-text="question.mot"
+          ></p>
+        </div>
+      </div>
+
+      <!-- Boss (zone centrale) -->
+      <div class="relative flex flex-1 items-center justify-center">
+        <!-- Image du boss PocketBase -->
+        <img
+          x-show="boss.imageUrl"
+          :src="boss.imageUrl"
+          :alt="boss.nom"
+          class="h-full object-contain"
+          style="max-height: 52vh;"
+          :class="degatBoss ? 'opacity-60' : 'opacity-100'"
+        />
+        <!-- Dégât sur le boss -->
+        <img
+          src={degatImg.src}
+          alt="Dégâts"
+          x-show="degatBoss"
+          class="absolute h-28 w-28 object-contain pointer-events-none"
+          style="top: 30%; left: 55%;"
+        />
+      </div>
+
+      <!-- Barre de vie boss (sous le boss, rouge) -->
+      <div class="shrink-0 px-6 pb-1">
+        <div class="h-4 w-full overflow-hidden rounded-full bg-black/40 border border-white/20">
+          <div
+            class="h-full rounded-full bg-red-500 transition-all duration-500"
+            :style="`width: ${pvBoss}%`"
+          ></div>
+        </div>
+      </div>
+
+      <!-- 3 vidéos choix -->
+      <div class="shrink-0 grid grid-cols-3 gap-2 px-3 pb-2" style="height: 22vh;">
+        <template x-for="(choix, i) in question.choix" :key="i">
+          <button
+            @click="repondre(i)"
+            :disabled="reponduIndex !== null"
+            :aria-label="`Choisir la vidéo ${i + 1}`"
+            class="relative overflow-hidden rounded-xl border-2 transition-all active:scale-95"
+            :class="reponduIndex === null
+              ? 'border-white/40'
+              : (i === question.bonneReponse
+                  ? 'border-green-400 ring-2 ring-green-400'
+                  : (reponduIndex === i ? 'border-red-400 ring-2 ring-red-400' : 'border-white/10 opacity-30'))
+            "
+            style="background: rgba(0,0,0,0.5);"
+          >
+            <video
+              :src="choix.videoUrl"
+              class="h-full w-full object-cover"
+              autoplay
+              loop
+              muted
+              playsinline
+              preload="auto"
+            ></video>
+          </button>
+        </template>
+      </div>
+
+      <!-- Joueur + barre vie joueur (bas) -->
+      <div class="shrink-0 px-4 pb-4">
+        <div class="flex items-end gap-3">
+          <!-- Ghost joueur -->
+          <div class="relative shrink-0">
+            <img
+              src={ghostIcon.src}
+              alt="Ton personnage"
+              class="h-20 w-20 object-contain transition-opacity"
+              :class="degatJoueur ? 'opacity-40' : 'opacity-100'"
+            />
+            <!-- Dégât sur le joueur -->
+            <img
+              src={degatImg.src}
+              alt="Dégâts"
+              x-show="degatJoueur"
+              class="absolute -top-4 -right-4 h-12 w-12 object-contain pointer-events-none"
+            />
+          </div>
+          <!-- Infos joueur -->
+          <div class="flex flex-1 flex-col gap-1">
+            <!-- Label username -->
+            <div
+              class="inline-block px-3 py-0.5 text-xs text-white"
+              style="background: rgba(0,0,0,0.5); border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 9px;"
+            >
+              Toi
+            </div>
+            <!-- Barre vie joueur (verte) -->
+            <div class="h-4 w-full overflow-hidden rounded-full bg-black/40 border border-white/20">
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                :style="`width: ${pvJoueur}%; background: ${pvJoueur > 50 ? '#22c55e' : pvJoueur > 25 ? '#eab308' : '#ef4444'}`"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════ ÉCRAN FIN ══════════════ -->
+    <div
+      x-show="phase === 'fin'"
+      x-transition:enter="transition ease-out duration-500"
+      x-transition:enter-start="opacity-0 scale-95"
+      x-transition:enter-end="opacity-100 scale-100"
+      class="relative z-10 flex h-full flex-col items-center justify-center gap-6 px-8 text-center"
+    >
+      <div class="text-8xl" x-text="victoire ? '🏆' : '💀'"></div>
+      <p
+        class="text-white"
+        style="font-family: 'Press Start 2P', monospace; font-size: 18px; line-height: 1.6;"
+        x-text="victoire ? 'VICTOIRE !' : 'DÉFAITE...'"
+      ></p>
+      <p class="text-white/60 text-sm" x-text="victoire ? 'Le boss est vaincu !' : 'Le boss t\'a eu cette fois...'"></p>
+      <div class="flex gap-6 text-white/80 text-sm">
+        <span>✅ <span x-text="bonnesReponses"></span> bonnes</span>
+        <span>❌ <span x-text="mauvaisesReponses"></span> fautes</span>
+      </div>
+      <div class="flex flex-col gap-3 w-full max-w-xs">
+        <button
+          @click="recommencer()"
+          class="w-full rounded-2xl py-4 font-bold text-white transition-opacity active:opacity-70"
+          style="
+            background: linear-gradient(160deg, #9B5EFF 0%, #6B28D4 100%);
+            border: 2.5px solid rgba(255,255,255,0.75);
+            box-shadow: 0 5px 0 #2D0E6E;
+            font-family: 'Press Start 2P', monospace; font-size: 12px;
+          "
+        >Rejouer</button>
+        <a
+          href="/jeux"
+          class="w-full rounded-2xl py-4 text-center font-bold text-white/70 transition-opacity active:opacity-70"
+          style="border: 2px solid rgba(255,255,255,0.2); font-family: 'Press Start 2P', monospace; font-size: 11px;"
+        >Retour aux jeux</a>
+      </div>
+    </div>
+
+    <!-- Chargement -->
+    <div x-show="phase === 'chargement'" class="relative z-10 flex h-full items-center justify-center">
+      <div class="h-12 w-12 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <!-- Erreur -->
+    <div x-show="phase === 'erreur'" class="relative z-10 flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+      <p class="text-red-300 text-sm" x-text="erreur"></p>
+      <a href="/jeux" class="text-white/60 underline text-sm">Retour aux jeux</a>
+    </div>
+
+    <!-- Bouton retour discret -->
+    <div x-show="phase === 'jeu'" class="absolute top-4 left-4 z-20">
+      <a href="/jeux" aria-label="Abandonner et retourner aux jeux">
+        <img src={retour.src} alt="" class="h-7 w-7 opacity-40 hover:opacity-80 transition-opacity" />
+      </a>
+    </div>
+
   </div>
 </Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('bossGame', () => ({
+      phase: 'chargement' as 'chargement' | 'jeu' | 'fin' | 'erreur',
+      erreur: '',
+      boss: { nom: '', imageUrl: '', degats: 20, degats_mauvais: 20 },
+      tousLesSignes: [] as any[],
+      pvBoss: 100,
+      pvJoueur: 100,
+      question: { mot: '', choix: [] as any[], bonneReponse: 0 },
+      reponduIndex: null as number | null,
+      degatBoss: false,
+      degatJoueur: false,
+      victoire: false,
+      bonnesReponses: 0,
+      mauvaisesReponses: 0,
+
+      async init() {
+        try {
+          const bosses = await pb.collection('boss').getFullList({ requestKey: null, sort: 'created' });
+          const b = bosses[0];
+          this.boss = {
+            nom: b.nom ?? 'Boss',
+            imageUrl: b.image ? pb.files.getURL(b, b.image) + `?t=${b.updated}` : '',
+            degats: b.degats_par_bonne_reponse ?? 20,
+            degats_mauvais: b.degats_mauvaise_reponse ?? 20,
+          };
+          this.pvBoss = b.points_vie ?? 100;
+
+          const signes = await pb.collection('Signes').getFullList({ requestKey: null });
+          this.tousLesSignes = signes
+            .filter((s: any) => s.video && s.mot)
+            .map((s: any) => ({
+              id: s.id,
+              mot: s.mot,
+              videoUrl: pb.files.getURL(s, s.video) + `?t=${s.updated}`,
+            }));
+
+          if (this.tousLesSignes.length < 3) {
+            this.erreur = 'Pas assez de signes avec vidéo dans PocketBase (minimum 3).';
+            this.phase = 'erreur';
+            return;
+          }
+
+          this.phase = 'jeu';
+          this.nouvelleQuestion();
+        } catch (e: any) {
+          this.erreur = e?.message ?? 'Erreur de connexion PocketBase.';
+          this.phase = 'erreur';
+        }
+      },
+
+      nouvelleQuestion() {
+        const melange = [...this.tousLesSignes].sort(() => Math.random() - 0.5);
+        const bon = melange[0];
+        const leurres = melange.slice(1, 3);
+        const choix = [
+          { videoUrl: bon.videoUrl, correct: true },
+          { videoUrl: leurres[0].videoUrl, correct: false },
+          { videoUrl: leurres[1].videoUrl, correct: false },
+        ].sort(() => Math.random() - 0.5);
+
+        this.question = { mot: bon.mot, choix, bonneReponse: choix.findIndex((c: any) => c.correct) };
+        this.reponduIndex = null;
+      },
+
+      async repondre(index: number) {
+        if (this.reponduIndex !== null) return;
+        this.reponduIndex = index;
+        const correct = index === this.question.bonneReponse;
+
+        if (correct) {
+          this.bonnesReponses++;
+          this.degatBoss = true;
+          this.pvBoss = Math.max(0, this.pvBoss - this.boss.degats);
+        } else {
+          this.mauvaisesReponses++;
+          this.degatJoueur = true;
+          this.pvJoueur = Math.max(0, this.pvJoueur - this.boss.degats_mauvais);
+        }
+
+        await new Promise(r => setTimeout(r, 700));
+        this.degatBoss = false;
+        this.degatJoueur = false;
+
+        if (this.pvBoss <= 0) { this.victoire = true; this.phase = 'fin'; return; }
+        if (this.pvJoueur <= 0) { this.victoire = false; this.phase = 'fin'; return; }
+
+        await new Promise(r => setTimeout(r, 300));
+        this.nouvelleQuestion();
+      },
+
+      recommencer() {
+        this.pvBoss = 100;
+        this.pvJoueur = 100;
+        this.bonnesReponses = 0;
+        this.mauvaisesReponses = 0;
+        this.victoire = false;
+        this.reponduIndex = null;
+        this.degatBoss = false;
+        this.degatJoueur = false;
+        this.phase = 'jeu';
+        this.nouvelleQuestion();
+      },
+    }));
+  });
+</script>

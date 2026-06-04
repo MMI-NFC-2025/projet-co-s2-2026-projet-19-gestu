@@ -1,8 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import BottomNav from '../components/BottomNav.astro';
-import coinsIcon from '../assets/icon/coins.svg';
-import retour from '../assets/icon/icone_retour_acceuil.svg';
+import PageHeader from '../components/PageHeader.astro';
 import gameboyFond from '../assets/img/gameboy_fond_apprendre.avif';
 ---
 
@@ -22,34 +21,10 @@ import gameboyFond from '../assets/img/gameboy_fond_apprendre.avif';
       class="absolute inset-0 h-full w-full object-cover object-top opacity-60 pointer-events-none select-none"
     />
 
-    <!-- Header -->
-    <div class="relative z-10 flex items-center justify-between px-4 pt-4">
-      <div class="flex items-center gap-2">
-        <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
-        <span class="text-xl font-bold text-white" x-text="coins">—</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div
-          class="h-4 w-36 overflow-hidden rounded-full bg-white/20"
-          role="progressbar"
-          aria-label="Points d'expérience"
-          :aria-valuenow="xp"
-          :aria-valuemax="xpMax"
-          aria-valuemin="0"
-        >
-          <div
-            class="h-full rounded-full bg-purple-400 transition-all"
-            :style="`width: ${xpPercent}%`"
-          ></div>
-        </div>
-        <a href="/dashboard" aria-label="Retour au tableau de bord">
-          <img src={retour.src} alt="" class="h-9 w-9" />
-        </a>
-      </div>
-    </div>
+    <PageHeader retourHref="/dashboard" retourLabel="Retour au tableau de bord" extraClass="relative z-10" />
 
     <!-- Liste de catégories scrollable -->
-    <div class="relative z-10 flex-1 overflow-y-auto px-4 pt-4 pb-20" x-show="!loading">
+    <main class="relative z-10 flex-1 overflow-y-auto px-4 pt-4 pb-20" x-show="!loading">
       <div class="flex flex-col gap-3">
         <template x-for="cat in categories" :key="cat.id">
           <a :href="`/apprendre/signes?id=${cat.id}`" class="block">
@@ -71,7 +46,7 @@ import gameboyFond from '../assets/img/gameboy_fond_apprendre.avif';
           <span>Aucune catégorie trouvée</span>
         </div>
       </div>
-    </div>
+    </main>
 
     <!-- Bottom Navigation -->
     <BottomNav active="apprendre" />
@@ -100,6 +75,7 @@ import gameboyFond from '../assets/img/gameboy_fond_apprendre.avif';
         try {
           const records = await pb.collection('Categories_signe').getFullList({
             sort: 'ordre_affichage',
+            requestKey: null,
           });
           this.categories = records.map((r: any) => ({
             id: r.id,
