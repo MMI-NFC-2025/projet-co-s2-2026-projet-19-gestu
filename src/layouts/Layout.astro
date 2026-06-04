@@ -20,7 +20,10 @@ const { title = 'Gestu' } = Astro.props;
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@0,100..700;1,100..700&family=Press+Start+2P&display=swap" rel="stylesheet" />
     <title>{title}</title>
   </head>
-  <body>
-    <slot />
+  <!-- Fond neutre visible sur les grands écrans, contenu centré façon "mobile frame" -->
+  <body class="bg-gestu-bg md:flex md:justify-center">
+    <div class="relative w-full md:max-w-md md:min-h-screen">
+      <slot />
+    </div>
   </body>
 </html>

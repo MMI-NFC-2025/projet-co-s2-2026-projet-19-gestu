@@ -1,0 +1,144 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BottomNav from '../components/BottomNav.astro';
+import PageHeader from '../components/PageHeader.astro';
+---
+
+<Layout title="Gestu — Teams">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: linear-gradient(180deg, #0D0D3B 0%, #1a0a4a 100%);"
+    x-data="teamsData()"
+    x-init="init()"
+  >
+
+    <PageHeader retourHref="/dashboard" retourLabel="Retour au tableau de bord" />
+
+    <main class="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+
+      <!-- Titre de section -->
+      <h1 class="mb-5 text-center font-game text-sm text-white">TEAMS</h1>
+
+      <!-- Chargement -->
+      <div x-show="loading" class="flex h-40 items-center justify-center" aria-live="polite" aria-label="Chargement en cours">
+        <div class="h-10 w-10 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+      </div>
+
+      <div x-show="!loading">
+
+        <!-- ─ Guerres en cours ─ -->
+        <h2 class="mb-3 text-xs font-bold uppercase tracking-widest text-purple-300">Guerres en cours</h2>
+
+        <template x-for="guerre in guerres" :key="guerre.id">
+          <article
+            class="mb-3 rounded-2xl p-4"
+            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-bold text-white" x-text="guerre.nom"></span>
+              <span
+                class="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
+                :class="guerre.statut === 'en_cours' ? 'bg-green-500/20 text-green-300' : 'bg-purple-500/20 text-purple-300'"
+                x-text="guerre.statut === 'en_cours' ? 'En cours' : 'Terminée'"
+              ></span>
+            </div>
+            <p class="mt-1 text-xs text-white/50" x-text="guerre.description"></p>
+          </article>
+        </template>
+
+        <p
+          x-show="guerres.length === 0"
+          class="py-6 text-center text-xs text-white/30"
+        >Aucune guerre en cours</p>
+
+        <!-- ─ Amis ─ -->
+        <h2 class="mb-3 mt-6 text-xs font-bold uppercase tracking-widest text-purple-300">Amis</h2>
+
+        <template x-for="ami in amis" :key="ami.id">
+          <div
+            class="mb-2 flex items-center gap-3 rounded-2xl p-3"
+            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);"
+          >
+            <!-- Avatar initiale -->
+            <div
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              style="background: #7C3AED;"
+              aria-hidden="true"
+            >
+              <span class="text-sm font-bold text-white" x-text="(ami.pseudo || '?')[0].toUpperCase()"></span>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-white" x-text="ami.pseudo"></p>
+              <p class="text-xs text-white/40" x-text="ami.niveau ? `Niveau ${ami.niveau}` : 'Joueur'"></p>
+            </div>
+          </div>
+        </template>
+
+        <p
+          x-show="amis.length === 0"
+          class="py-6 text-center text-xs text-white/30"
+        >Aucun ami pour l'instant</p>
+
+      </div>
+    </main>
+
+    <BottomNav active="teams" />
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('teamsData', () => ({
+      coins: 0,
+      xp: 0,
+      xpMax: 100,
+      xpPercent: 0,
+      loading: true,
+      guerres: [] as any[],
+      amis: [] as any[],
+
+      async init() {
+        const DEV_MODE = true;
+        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
+        this.coins = user?.coins ?? 0;
+        this.xp = user?.xp ?? 0;
+        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+
+        try {
+          const [guerresData, amisData] = await Promise.all([
+            pb.collection('Guerres').getFullList({ requestKey: null }),
+            pb.collection('Amis').getFullList({ requestKey: null }),
+          ]);
+
+          this.guerres = guerresData.map((r: any) => ({
+            id: r.id,
+            nom: r.nom ?? 'Guerre',
+            description: r.description ?? '',
+            statut: r.statut ?? 'en_cours',
+          }));
+
+          this.amis = amisData.map((r: any) => ({
+            id: r.id,
+            pseudo: r.pseudo ?? 'Joueur',
+            niveau: r.niveau ?? null,
+          }));
+
+        } catch {
+          // TODO: remplacer ces données temporaires par les données récupérées depuis PocketBase
+          this.guerres = [
+            { id: '1', nom: 'Guerre des signes', description: 'Défi hebdomadaire en cours', statut: 'en_cours' },
+          ];
+          this.amis = [
+            { id: '1', pseudo: 'Alice', niveau: 5 },
+            { id: '2', pseudo: 'Bob', niveau: 3 },
+          ];
+        } finally {
+          this.loading = false;
+        }
+      },
+    }));
+  });
+</script>

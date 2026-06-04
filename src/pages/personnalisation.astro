@@ -1,0 +1,187 @@
+---
+import Layout from '../layouts/Layout.astro';
+import retour from '../assets/icon/fleche_retour.svg';
+import ghostDefault from '../assets/icon/ghost_acceuil.svg';
+import coinsIcon from '../assets/icon/coins.svg';
+---
+
+<Layout title="Gestu — Personnalisation">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden select-none"
+    style="background: radial-gradient(circle at 50% 30%, #2D2DB0 0%, #18187A 28%, #0D0D3B 80%);"
+    x-data="personnalisationData()"
+    x-init="init()"
+    data-ghost-default={ghostDefault.src}
+  >
+
+    <!-- ══ CHARGEMENT ══ -->
+    <div x-show="loading" class="flex h-full items-center justify-center">
+      <div class="h-12 w-12 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <div x-show="!loading" class="flex h-full flex-col">
+
+      <!-- Header -->
+      <header class="shrink-0 flex items-center justify-between px-4 pt-4">
+        <div class="flex items-center gap-2">
+          <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
+          <span class="text-xl font-bold text-white" x-text="coins">—</span>
+        </div>
+        <p class="font-game text-xs text-white" style="text-shadow: 0 0 12px #7C3AED;">MON GHOST</p>
+        <a href="/dashboard" aria-label="Retour au tableau de bord">
+          <img src={retour.src} alt="" class="h-8 w-8 object-contain opacity-80 hover:opacity-100 transition-opacity" />
+        </a>
+      </header>
+
+      <!-- Zone avatar + nom -->
+      <div class="shrink-0 flex flex-col items-center pt-6 pb-4">
+        <div class="relative">
+          <img
+            :src="avatarActuel?.imageUrl || defaultGhost"
+            :alt="avatarActuel?.nom || 'Mon ghost'"
+            class="h-36 w-36 object-contain drop-shadow-2xl"
+            style="filter: drop-shadow(0 0 24px rgba(124,58,237,0.6));"
+          />
+        </div>
+        <p
+          class="mt-3 font-bold text-white text-lg"
+          x-text="avatarActuel?.nom || 'Ghost de base'"
+        ></p>
+        <p class="text-xs text-purple-300" x-text="pseudo"></p>
+      </div>
+
+      <!-- Message feedback -->
+      <div
+        x-show="message"
+        x-transition
+        role="status"
+        aria-live="polite"
+        class="mx-6 mb-2 rounded-xl px-4 py-2 text-center text-xs font-bold text-white"
+        :class="messageType === 'error' ? 'bg-red-600/80' : 'bg-green-600/80'"
+        x-text="message"
+      ></div>
+
+      <!-- Grille des avatars disponibles -->
+      <main class="flex-1 overflow-y-auto px-4 pb-6">
+        <h2 class="mb-3 text-center text-xs font-bold uppercase tracking-widest text-purple-300">
+          Choisir un ghost
+        </h2>
+
+        <div class="grid grid-cols-3 gap-3">
+          <template x-for="avatar in avatars" :key="avatar.id">
+            <button
+              @click="selectionner(avatar)"
+              class="flex flex-col items-center gap-2 rounded-2xl p-3 transition-transform active:scale-95"
+              :style="avatarActuel?.id === avatar.id
+                ? 'background: rgba(124,58,237,0.3); border: 2px solid #7C3AED;'
+                : 'background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.1);'"
+              :aria-label="`Sélectionner ${avatar.nom}`"
+              :aria-pressed="avatarActuel?.id === avatar.id"
+            >
+              <!-- Image ou verrou -->
+              <div class="relative flex h-16 w-16 items-center justify-center">
+                <img
+                  :src="avatar.imageUrl || defaultGhost"
+                  :alt="avatar.nom"
+                  class="h-full w-full object-contain"
+                  :class="!avatar.possede ? 'opacity-40 grayscale' : ''"
+                />
+                <!-- Verrou -->
+                <template x-if="!avatar.possede">
+                  <div class="absolute bottom-0 right-0 rounded-full bg-gestu-bg p-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M12 1C9.243 1 7 3.243 7 6v2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6c0-2.757-2.243-5-5-5zm0 2c1.654 0 3 1.346 3 3v2H9V6c0-1.654 1.346-3 3-3z"/>
+                    </svg>
+                  </div>
+                </template>
+              </div>
+
+              <p class="text-center text-xs font-bold text-white leading-tight" x-text="avatar.nom"></p>
+
+              <!-- Prix si non possédé -->
+              <template x-if="!avatar.possede">
+                <span class="text-xs font-bold text-purple-300" x-text="avatar.prix + ' 🪙'"></span>
+              </template>
+            </button>
+          </template>
+        </div>
+      </main>
+
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import pb from '../lib/pocketbase.js';
+
+  (window as any).Alpine.data('personnalisationData', () => ({
+    loading: true,
+    coins: 0,
+    xp: 0,
+    xpMax: 100,
+    xpPercent: 0,
+    pseudo: '',
+    avatars: [] as any[],
+    avatarActuel: null as any,
+    defaultGhost: '',
+    message: '',
+    messageType: 'success' as 'success' | 'error',
+    _msgTimer: null as ReturnType<typeof setTimeout> | null,
+
+    async init() {
+      this.defaultGhost = (document.querySelector('[data-ghost-default]') as HTMLElement)?.dataset.ghostDefault ?? '';
+
+      const DEV_MODE = true;
+      const user = DEV_MODE ? { pseudo: 'DevUser', coins: 150, xp: 420 } : pb.authStore.model;
+      this.coins = user?.coins ?? 0;
+      this.xp = user?.xp ?? 0;
+      this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+      this.pseudo = user?.pseudo ?? 'Joueur';
+
+      try {
+        const records = await pb.collection('Avatars').getFullList({ requestKey: null });
+        this.avatars = records.map((r: any) => ({
+          id: r.id,
+          nom: r.nom ?? 'Ghost',
+          imageUrl: r.image ? pb.files.getURL(r, r.image) + `?t=${r.updated}` : '',
+          prix: r.prix ?? 0,
+          possede: r.possede ?? false,
+        }));
+        // Sélectionner le premier avatar possédé par défaut
+        this.avatarActuel = this.avatars.find((a) => a.possede) ?? this.avatars[0] ?? null;
+      } catch {
+        // TODO: remplacer ces données temporaires par les données récupérées depuis PocketBase
+        this.avatars = [
+          { id: '1', nom: 'Ghost Bleu',   imageUrl: '', prix: 0,   possede: true  },
+          { id: '2', nom: 'Ghost Rouge',  imageUrl: '', prix: 150, possede: false },
+          { id: '3', nom: 'Ghost Violet', imageUrl: '', prix: 200, possede: false },
+          { id: '4', nom: 'Ghost Noir',   imageUrl: '', prix: 300, possede: false },
+        ];
+        this.avatarActuel = this.avatars[0];
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    selectionner(avatar: any) {
+      if (!avatar.possede) {
+        if (this.coins < avatar.prix) {
+          this.showMessage('Pas assez de coins !', 'error');
+          return;
+        }
+        // TODO: enregistrer l'achat et la sélection dans PocketBase
+        this.coins -= avatar.prix;
+        avatar.possede = true;
+      }
+      this.avatarActuel = avatar;
+      this.showMessage(`Ghost "${avatar.nom}" sélectionné !`, 'success');
+    },
+
+    showMessage(msg: string, type: 'success' | 'error') {
+      this.message = msg;
+      this.messageType = type;
+      if (this._msgTimer) clearTimeout(this._msgTimer);
+      this._msgTimer = setTimeout(() => { this.message = ''; }, 2000);
+    },
+  }));
+</script>

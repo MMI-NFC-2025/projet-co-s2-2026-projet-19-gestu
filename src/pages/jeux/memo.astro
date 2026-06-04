@@ -1,11 +1,264 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import retour from '../../assets/icon/fleche_retour.svg';
 ---
+
 <Layout title="Gestu — Mémo">
-  <div class="flex h-screen w-full flex-col items-center justify-center gap-6"
-    style="background: radial-gradient(circle at 50% 50%, #4343BA 6%, #1F1F8F 29%, #0D0D3B 83%);">
-    <p class="text-4xl font-bold text-white">🎮 Mémo</p>
-    <p class="text-white/60">Mini-jeu en cours de développement…</p>
-    <a href="/jeux" class="rounded-full bg-[#4343DB] px-6 py-3 font-bold text-white">← Retour</a>
+  <div
+    class="relative h-screen w-full overflow-hidden select-none"
+    x-data="memoGame()"
+    x-init="init()"
+    style="background: radial-gradient(circle at 50% 40%, #2D2DB0 0%, #18187A 28%, #0D0D3B 80%);"
+  >
+
+    <!-- ══ CHARGEMENT ══ -->
+    <div x-show="phase === 'chargement'" class="flex h-full items-center justify-center">
+      <div class="h-12 w-12 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <!-- ══ ERREUR ══ -->
+    <div x-show="phase === 'erreur'" class="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+      <p class="text-red-300 text-sm" x-text="erreur" role="alert"></p>
+      <a href="/jeux" class="text-white/60 underline text-sm">Retour aux jeux</a>
+    </div>
+
+    <!-- ══ JEU ══ -->
+    <div x-show="phase === 'jeu'" class="flex h-full flex-col">
+
+      <!-- Header -->
+      <div class="shrink-0 flex items-center justify-between pt-3 px-4 pb-1">
+        <a
+          href="/jeux"
+          class="flex h-9 w-9 items-center justify-center rounded-full"
+          style="background:rgba(30,10,70,0.75);border:1.5px solid rgba(255,255,255,0.25);"
+        >
+          <img src={retour.src} alt="Retour" class="h-4 w-4 object-contain" />
+        </a>
+        <p style="font-family:'Press Start 2P',monospace;font-size:11px;color:white;text-shadow:0 0 12px #7C3AED;">MÉMO</p>
+        <span
+          style="font-family:'Press Start 2P',monospace;font-size:9px;color:#A78BFA;"
+          x-text="`${pairesRestantes} paires`"
+        ></span>
+      </div>
+
+      <!-- Essais -->
+      <div class="shrink-0 flex justify-center py-1">
+        <span
+          style="font-family:'Press Start 2P',monospace;font-size:7px;color:rgba(255,255,255,0.45);"
+          x-text="`${tentatives} essais`"
+        ></span>
+      </div>
+
+      <!-- Cartes : 3 + 3 + 2 -->
+      <div class="flex flex-1 items-center justify-center px-5">
+        <div class="flex flex-wrap justify-center" style="max-width:300px;gap:10px;">
+          <template x-for="(carte, i) in cartes" :key="carte.id">
+            <div
+              :class="carte.trouvee ? 'pointer-events-none' : 'cursor-pointer'"
+              style="width:calc(33.33% - 7px);aspect-ratio:3/4;perspective:600px;"
+              @click="retournerCarte(i)"
+            >
+              <!-- Conteneur flip -->
+              <div
+                class="relative w-full h-full"
+                style="transform-style:preserve-3d;transition:transform 0.4s ease;"
+                :style="carte.retournee ? 'transform:rotateY(180deg)' : 'transform:rotateY(0deg)'"
+              >
+                <!-- DOS -->
+                <div
+                  class="absolute inset-0 rounded-2xl overflow-hidden"
+                  style="backface-visibility:hidden;border:3px solid #7C3AED;box-shadow:0 4px 16px rgba(124,58,237,0.4);"
+                >
+                  <img :src="dosUrl" alt="" class="w-full h-full object-cover" />
+                </div>
+
+                <!-- FACE -->
+                <div
+                  class="absolute inset-0 rounded-2xl overflow-hidden"
+                  style="backface-visibility:hidden;transform:rotateY(180deg);transition:opacity 0.3s ease;"
+                  :style="carte.trouvee
+                    ? 'opacity:0.3;border:3px solid #7C3AED;box-shadow:0 0 10px rgba(124,58,237,0.5);'
+                    : 'border:3px solid #A78BFA;'"
+                >
+                  <img :src="carte.imgUrl" :alt="carte.mot" class="w-full h-full object-cover" />
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Flash erreur -->
+      <div class="shrink-0 flex justify-center pb-5 h-9 items-center">
+        <p
+          x-show="flash !== ''"
+          x-text="flash"
+          style="font-family:'Press Start 2P',monospace;font-size:9px;color:#F87171;text-shadow:0 0 8px rgba(248,113,113,0.6);"
+        ></p>
+      </div>
+
+    </div>
+
+    <!-- ══ FIN ══ -->
+    <div
+      x-show="phase === 'fin'"
+      class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 px-8"
+      style="background:rgba(13,13,59,0.90);backdrop-filter:blur(8px);"
+    >
+      <p style="font-family:'Press Start 2P',monospace;font-size:20px;color:white;text-shadow:0 0 24px #7C3AED;text-align:center;">BRAVO !</p>
+      <p
+        style="font-family:'Press Start 2P',monospace;font-size:10px;color:#A78BFA;text-align:center;"
+        x-text="`${tentatives} essais pour trouver toutes les paires`"
+      ></p>
+      <div class="flex gap-4">
+        <button
+          @click="recommencer()"
+          class="rounded-full px-6 py-3 text-white"
+          style="background:#6D28D9;font-family:'Press Start 2P',monospace;font-size:9px;"
+        >REJOUER</button>
+        <a
+          href="/jeux"
+          class="flex items-center rounded-full px-6 py-3 text-white"
+          style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);font-family:'Press Start 2P',monospace;font-size:9px;"
+        >RETOUR</a>
+      </div>
+    </div>
+
   </div>
 </Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  (window as any).Alpine.data('memoGame', () => ({
+    phase: 'chargement' as string,
+    erreur: '',
+    dosUrl: '' as string,
+    tousLesSignes: [] as { id: string; mot: string; imgUrl: string }[],
+    cartes: [] as { id: number; mot: string; imgUrl: string; retournee: boolean; trouvee: boolean }[],
+    selection: [] as number[],
+    bloque: false,
+    tentatives: 0,
+    flash: '',
+    _flashTimer: null as ReturnType<typeof setTimeout> | null,
+
+    get pairesRestantes() {
+      const total = this.cartes.length / 2;
+      const trouvees = this.cartes.filter((c) => c.trouvee).length / 2;
+      return total - trouvees;
+    },
+
+    async init() {
+      try {
+        const records = await pb.collection('image_memo').getFullList({ requestKey: null });
+        if (records.length < 8) {
+          this.erreur = `Pas assez de cartes dans image_memo (${records.length} trouvées, 8 minimum).`;
+          this.phase = 'erreur';
+          return;
+        }
+        // Dos de carte depuis le premier enregistrement
+        const first = records[0] as any;
+        if (first.carte_dos_memo) {
+          this.dosUrl = pb.files.getURL(first, first.carte_dos_memo) + `?t=${first.updated}`;
+        }
+        // Mapper tous les enregistrements
+        this.tousLesSignes = (records as any[]).map((s) => ({
+          id: s.id,
+          mot: s.mot,
+          imgUrl: s.img ? pb.files.getURL(s, s.img) + `?t=${s.updated}` : '',
+        }));
+        this.genererCartes();
+        this.phase = 'jeu';
+      } catch (e: any) {
+        this.erreur = e?.message ?? 'Erreur de connexion PocketBase.';
+        this.phase = 'erreur';
+      }
+    },
+
+    genererCartes() {
+      // Grouper par mot pour trouver les paires
+      const groupes = new Map<string, typeof this.tousLesSignes>();
+      for (const s of this.tousLesSignes) {
+        if (!groupes.has(s.mot)) groupes.set(s.mot, []);
+        groupes.get(s.mot)!.push(s);
+      }
+      // Garder uniquement les paires complètes (2 cartes)
+      const paires = [...groupes.values()].filter((g) => g.length >= 2);
+      if (paires.length < 4) {
+        this.erreur = `Pas assez de paires complètes (${paires.length}/4 requises).`;
+        this.phase = 'erreur';
+        return;
+      }
+      // Choisir 4 paires aléatoires → 8 cartes
+      let uid = 0;
+      const cartes = [...paires]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 4)
+        .flatMap((paire) =>
+          paire.slice(0, 2).map((s) => ({
+            id: uid++,
+            mot: s.mot,
+            imgUrl: s.imgUrl,
+            retournee: false,
+            trouvee: false,
+          }))
+        )
+        .sort(() => Math.random() - 0.5);
+      this.cartes = cartes;
+    },
+
+    retournerCarte(index: number) {
+      const carte = this.cartes[index];
+      if (this.bloque || carte.retournee || carte.trouvee) return;
+      if (this.selection.length >= 2) return;
+
+      carte.retournee = true;
+      this.selection.push(index);
+      if (this.selection.length < 2) return;
+
+      this.bloque = true;
+      this.tentatives++;
+
+      const [i1, i2] = this.selection;
+      const c1 = this.cartes[i1];
+      const c2 = this.cartes[i2];
+      const match = c1.mot === c2.mot && c1.id !== c2.id;
+
+      setTimeout(() => {
+        if (match) {
+          c1.trouvee = true;
+          c2.trouvee = true;
+          c1.retournee = false;
+          c2.retournee = false;
+          this.selection = [];
+          this.bloque = false;
+          if (this.cartes.every((c) => c.trouvee)) {
+            setTimeout(() => { this.phase = 'fin'; }, 500);
+          }
+        } else {
+          c1.retournee = false;
+          c2.retournee = false;
+          this.selection = [];
+          this.bloque = false;
+          this.showFlash('Pas de paire !');
+        }
+      }, 900);
+    },
+
+    showFlash(msg: string) {
+      this.flash = msg;
+      if (this._flashTimer) clearTimeout(this._flashTimer);
+      this._flashTimer = setTimeout(() => { this.flash = ''; }, 1200);
+    },
+
+    recommencer() {
+      this.tentatives = 0;
+      this.selection = [];
+      this.bloque = false;
+      this.flash = '';
+      this.genererCartes();
+      this.phase = 'jeu';
+    },
+  }));
+</script>
+

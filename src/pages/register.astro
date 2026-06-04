@@ -14,12 +14,12 @@ import btnCreer from '../assets/icon/creer_ton_compte.svg';
 
     <!-- Barre supérieure : pastilles + ghost -->
     <div class="relative flex items-start justify-center px-4 pt-6">
-      <div class="flex items-center gap-2 pt-1">
-        <span class="block h-2.5 w-2.5 rounded-full bg-white/40"></span>
-        <span class="block h-2.5 w-2.5 rounded-full bg-white/40"></span>
-        <span class="block h-2.5 w-2.5 rounded-full bg-white/60"></span>
-        <span class="block h-2.5 w-2.5 rounded-full bg-white/70"></span>
-        <span class="block h-3.5 w-3.5 rounded-full bg-white"></span>
+      <div class="flex items-center gap-2 pt-1" role="progressbar" aria-label="Étape 5 sur 5" aria-valuenow={5} aria-valuemin={1} aria-valuemax={5}>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/60" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/70" aria-hidden="true"></span>
+        <span class="block h-3.5 w-3.5 rounded-full bg-white" aria-hidden="true"></span>
       </div>
       <img src={ghost.src} alt="" class="absolute right-4 top-0 h-20 w-20 object-contain" />
     </div>
