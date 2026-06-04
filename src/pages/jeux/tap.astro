@@ -4,6 +4,8 @@ import retour from '../../assets/icon/fleche_retour.svg';
 import fond from '../../assets/img/fond_jeu_tap.avif';
 import arcade from '../../assets/img/arcade_jeu_tap.avif';
 import degatImg from '../../assets/img/degat.avif';
+import winImg from '../../assets/img/win.avif';
+import gameoverImg from '../../assets/img/gameover.avif';
 ---
 
 <Layout title="Gestu — Tap">
@@ -162,35 +164,36 @@ import degatImg from '../../assets/img/degat.avif';
     <!-- ══ FIN ══ -->
     <div
       x-show="phase === 'fin'"
-      x-transition:enter="transition ease-out duration-500"
-      x-transition:enter-start="opacity-0 scale-95"
-      x-transition:enter-end="opacity-100 scale-100"
-      class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 px-8 text-center"
-      style="background: rgba(8,4,30,0.82); backdrop-filter: blur(4px);"
+      x-transition:enter="transition ease-out duration-700"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      class="absolute inset-0 z-20"
     >
-      <p
-        class="text-white"
-        style="font-family: 'Press Start 2P', monospace; font-size: 18px; line-height: 1.6;"
-        x-text="victoire ? 'BRAVO !' : 'GAME OVER'"
-      ></p>
-      <p class="text-white/60 text-sm" x-text="`Score : ${score} pts`"></p>
-      <div class="flex flex-col gap-3 w-full max-w-xs">
-        <button
-          @click="recommencer()"
-          class="w-full rounded-2xl py-4 font-bold text-white transition-opacity active:opacity-70"
-          style="
-            background: linear-gradient(160deg, #9B5EFF 0%, #6B28D4 100%);
-            border: 2.5px solid rgba(255,255,255,0.75);
-            box-shadow: 0 5px 0 #2D0E6E;
-            font-family: 'Press Start 2P', monospace;
-            font-size: 12px;
-          "
-        >Rejouer</button>
-        <a
-          href="/jeux"
-          class="w-full rounded-2xl py-4 text-center font-bold text-white/70 transition-opacity active:opacity-70"
-          style="border: 2px solid rgba(255,255,255,0.2); font-family: 'Press Start 2P', monospace; font-size: 11px;"
-        >Retour aux jeux</a>
+      <!-- Image plein écran -->
+      <img x-show="victoire" src={winImg.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center" />
+      <img x-show="!victoire" src={gameoverImg.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center" />
+      <!-- Overlay gradient + boutons -->
+      <div
+        class="absolute inset-0 flex flex-col justify-end pb-12 px-8"
+        style="background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%);"
+      >
+        <div class="flex flex-col gap-3 w-full">
+          <button
+            @click="recommencer()"
+            class="w-full rounded-2xl py-4 font-bold text-white transition-opacity active:opacity-70"
+            style="
+              background: linear-gradient(160deg, #9B5EFF 0%, #6B28D4 100%);
+              border: 2.5px solid rgba(255,255,255,0.75);
+              box-shadow: 0 5px 0 #2D0E6E;
+              font-family: 'Press Start 2P', monospace; font-size: 12px;
+            "
+          >REJOUER</button>
+          <a
+            href="/jeux"
+            class="w-full rounded-2xl py-4 text-center font-bold text-white/70 transition-opacity active:opacity-70"
+            style="border: 2px solid rgba(255,255,255,0.35); font-family: 'Press Start 2P', monospace; font-size: 11px;"
+          >ACCUEIL</a>
+        </div>
       </div>
     </div>
 
