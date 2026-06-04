@@ -1,12 +1,14 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import retour from '../../assets/icon/icone_retour_acceuil.svg';
+import coinsIcon from '../../assets/icon/coins.svg';
 import gameboyFond from '../../assets/img/gameboy_fond_apprendre.avif';
 
 export async function getStaticPaths() {
   try {
     const { default: PocketBase } = await import('pocketbase');
-    const pb = new PocketBase('http://127.0.0.1:8090');
+    const pbUrl = import.meta.env.PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
+    const pb = new PocketBase(pbUrl);
     const cats = await pb.collection('Categories_signe').getFullList({ requestKey: null });
     return cats.map((c: any) => ({ params: { id: c.id } }));
   } catch {

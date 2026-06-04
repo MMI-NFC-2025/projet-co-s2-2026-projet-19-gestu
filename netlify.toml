@@ -1,0 +1,7 @@
+[build]
+  command   = "npm run build"
+  publish   = "dist"
+
+# La variable PUBLIC_POCKETBASE_URL doit être définie dans :
+# Netlify → Site configuration → Environment variables
+# Valeur exemple : https://pb.ton-domaine.com
