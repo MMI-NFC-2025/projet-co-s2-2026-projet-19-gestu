@@ -1,0 +1,62 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ghost from '../assets/icon/ghostcreationcompte.svg';
+import logo from '../assets/icon/logo_typographique.svg';
+import btnCreer from '../assets/icon/creer_ton_compte.svg';
+import btnConnecter from '../assets/icon/se_connecter.svg';
+import signe from '../assets/img/signe_compte.avif';
+---
+
+<Layout title="Gestu — Bienvenue">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: radial-gradient(circle at 50% 50%, #4343BA 6%, #1F1F8F 29%, #0D0D3B 83%);"
+  >
+
+    <!-- Barre supérieure : pastilles + ghost -->
+    <div class="relative flex items-start justify-center px-4 pt-6">
+
+      <!-- 5 pastilles de progression (dernière = active) -->
+      <div class="flex items-center gap-2 pt-1" role="progressbar" aria-label="Étape 5 sur 5" aria-valuenow={5} aria-valuemin={1} aria-valuemax={5}>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/60" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/70" aria-hidden="true"></span>
+        <span class="block h-3.5 w-3.5 rounded-full bg-white" aria-hidden="true"></span>
+      </div>
+
+      <!-- Ghost mascotte (haut droite) -->
+      <img
+        src={ghost.src}
+        alt=""
+        class="absolute right-4 top-0 h-20 w-20 object-contain"
+      />
+    </div>
+
+    <!-- Illustration signe (centre, derrière les boutons) -->
+    <div class="relative flex flex-1 items-center justify-center">
+      <img
+        src={signe.src}
+        alt=""
+        class="absolute h-4/5 w-4/5 max-w-sm object-contain opacity-60"
+      />
+
+      <!-- Boutons d'authentification -->
+      <div class="relative z-10 flex flex-col items-center gap-3">
+        <a href="/register" class="block w-64 transition-transform active:scale-95">
+          <img src={btnCreer.src} alt="Crée ton compte" class="w-full" />
+        </a>
+
+        <a href="/login" class="block w-64 transition-transform active:scale-95">
+          <img src={btnConnecter.src} alt="Se connecter" class="w-full" />
+        </a>
+      </div>
+    </div>
+
+    <!-- Logo Gestu (bas gauche) -->
+    <div class="px-6 pb-6">
+      <img src={logo.src} alt="Gestu" class="h-10 object-contain" />
+    </div>
+
+  </div>
+</Layout>

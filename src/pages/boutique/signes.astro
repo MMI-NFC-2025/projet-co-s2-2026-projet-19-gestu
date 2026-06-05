@@ -1,0 +1,168 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import BottomNav from '../../components/BottomNav.astro';
+import coinsIcon from '../../assets/icon/coins.svg';
+import retour from '../../assets/icon/icone_retour_acceuil.svg';
+---
+
+<Layout title="Gestu — Boutique Signes">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: linear-gradient(180deg, #0D0D3B 0%, #1a0a4a 100%);"
+    x-data="signesBoutique()"
+    x-init="init()"
+  >
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-4 pt-4">
+      <div class="flex items-center gap-2">
+        <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
+        <span class="text-xl font-bold text-white" x-text="coins">—</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div
+          class="h-4 w-36 overflow-hidden rounded-full bg-white/20"
+          role="progressbar"
+          aria-label="Points d'expérience"
+          :aria-valuenow="xp"
+          :aria-valuemax="xpMax"
+          aria-valuemin="0"
+        >
+          <div class="h-full rounded-full bg-purple-400 transition-all" :style="`width: ${xpPercent}%`"></div>
+        </div>
+        <a href="/boutique" aria-label="Retour à la boutique">
+          <img src={retour.src} alt="" class="h-9 w-9" />
+        </a>
+      </div>
+    </header>
+
+    <!-- Titre -->
+    <h1 class="mt-4 text-center font-game text-sm text-white">SIGNES</h1>
+
+    <!-- Chargement -->
+    <div x-show="loading" class="flex flex-1 items-center justify-center" aria-live="polite" aria-label="Chargement en cours">
+      <div class="h-10 w-10 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <!-- Liste des packs -->
+    <main x-show="!loading" class="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+
+      <p class="mb-4 text-center text-xs text-white/50">Débloque de nouvelles catégories de signes</p>
+
+      <!-- Message feedback -->
+      <div
+        x-show="message"
+        x-transition
+        role="status"
+        aria-live="polite"
+        class="mb-4 rounded-xl px-4 py-3 text-center text-sm font-bold text-white"
+        :class="messageType === 'error' ? 'bg-red-600/80' : 'bg-green-600/80'"
+        x-text="message"
+      ></div>
+
+      <template x-for="pack in packs" :key="pack.id">
+        <article
+          class="mb-4 rounded-2xl p-4"
+          style="border: 1.5px solid rgba(124,58,237,0.4);"
+          :style="pack.possede ? 'background: rgba(52,211,153,0.08);' : 'background: rgba(255,255,255,0.05);'"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex-1">
+              <p class="font-bold text-white" x-text="pack.nom"></p>
+              <p class="mt-0.5 text-xs text-white/50" x-text="pack.description"></p>
+            </div>
+
+            <!-- Badge possédé -->
+            <template x-if="pack.possede">
+              <span class="shrink-0 rounded-full bg-green-500/20 px-3 py-1 text-xs font-bold text-green-300">✓ Débloqué</span>
+            </template>
+
+            <!-- Bouton acheter -->
+            <template x-if="!pack.possede">
+              <button
+                @click="acheter(pack)"
+                class="shrink-0 rounded-xl px-4 py-2 text-xs font-bold text-white transition-transform active:scale-95"
+                style="background: linear-gradient(135deg, #7c3aed, #4f46e5);"
+                :aria-label="`Acheter ${pack.nom} pour ${pack.prix} coins`"
+                x-text="pack.prix + ' coins'"
+              ></button>
+            </template>
+          </div>
+        </article>
+      </template>
+
+      <p
+        x-show="packs.length === 0"
+        class="py-10 text-center text-xs text-white/30"
+      >Aucun pack disponible</p>
+
+    </main>
+
+    <BottomNav active="boutique" />
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('signesBoutique', () => ({
+      coins: 0,
+      xp: 0,
+      xpMax: 100,
+      xpPercent: 0,
+      loading: true,
+      packs: [] as any[],
+      message: '',
+      messageType: 'success' as 'success' | 'error',
+      _msgTimer: null as ReturnType<typeof setTimeout> | null,
+
+      async init() {
+        const DEV_MODE = true;
+        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
+        this.coins = user?.coins ?? 0;
+        this.xp = user?.xp ?? 0;
+        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+
+        try {
+          const records = await pb.collection('Pack_signes').getFullList({ requestKey: null });
+          this.packs = records.map((r: any) => ({
+            id: r.id,
+            nom: r.nom ?? 'Pack',
+            description: r.description ?? '',
+            prix: r.prix ?? 0,
+            possede: r.possede ?? false,
+          }));
+        } catch {
+          // TODO: remplacer ces données temporaires par les données récupérées depuis PocketBase
+          this.packs = [
+            { id: '1', nom: 'Pack Émotions', description: '20 signes sur les émotions', prix: 50, possede: true },
+            { id: '2', nom: 'Pack Sport', description: '15 signes sur le sport', prix: 80, possede: false },
+            { id: '3', nom: 'Pack Besoin', description: '25 signes du quotidien', prix: 100, possede: false },
+          ];
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      acheter(pack: any) {
+        if (this.coins < pack.prix) {
+          this.showMessage('Pas assez de coins !', 'error');
+          return;
+        }
+        // TODO: enregistrer l'achat dans PocketBase (collection Achats ou Utilisateurs)
+        this.coins -= pack.prix;
+        pack.possede = true;
+        this.showMessage(`Pack "${pack.nom}" débloqué !`, 'success');
+      },
+
+      showMessage(msg: string, type: 'success' | 'error') {
+        this.message = msg;
+        this.messageType = type;
+        if (this._msgTimer) clearTimeout(this._msgTimer);
+        this._msgTimer = setTimeout(() => { this.message = ''; }, 2500);
+      },
+    }));
+  });
+</script>

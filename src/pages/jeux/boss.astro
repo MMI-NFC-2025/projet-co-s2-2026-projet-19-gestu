@@ -1,0 +1,405 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ghostIcon from '../../assets/icon/ghost_acceuil.svg';
+import retour from '../../assets/icon/fleche_retour.svg';
+import fondBoss from '../../assets/img/fond_jeux_boss.avif';
+import degatImg from '../../assets/img/degat.avif';
+import winImg from '../../assets/img/win.avif';
+import gameoverImg from '../../assets/img/gameover.avif';
+---
+
+<Layout title="Gestu — Boss">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden select-none"
+    x-data="bossGame()"
+    x-init="init()"
+    data-ghost-default={ghostIcon.src}
+  >
+
+    <!-- ══════════════ ÉCRAN DE JEU ══════════════ -->
+    <div x-show="phase === 'jeu'" class="relative flex h-full flex-col overflow-hidden">
+
+      <!-- Fond de ville -->
+      <img src={fondBoss.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center pointer-events-none" />
+      <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.55) 100%);"></div>
+
+      <!-- ── TOP BAR ── -->
+      <div class="relative z-10 shrink-0 flex items-center justify-between px-4 pt-4 pb-2">
+        <a href="/jeux" aria-label="Retour">
+          <img src={retour.src} alt="" class="h-7 w-7 opacity-70 hover:opacity-100 transition-opacity" />
+        </a>
+        <!-- Badge nom du boss -->
+        <div class="rounded-lg px-5 py-1.5"
+          style="background: #7C3AED; border: 2.5px solid rgba(255,255,255,0.85); font-family: 'Press Start 2P', monospace; font-size: 12px; color: white;">
+          <span x-text="boss.nom || 'Boss'"></span>
+        </div>
+        <div class="w-7"></div>
+      </div>
+
+      <!-- ── BARRE DE VIE BOSS ── -->
+      <div class="relative z-10 shrink-0 px-4 pb-1">
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-3.5 bg-white/20 rounded-full overflow-hidden border border-white/20">
+            <div class="h-full bg-red-500 transition-all duration-500" :style="`width: ${pvBoss}%`"></div>
+          </div>
+          <span class="text-white/60" style="font-family: 'Press Start 2P', monospace; font-size: 7px;" x-text="`${pvBoss}%`"></span>
+        </div>
+      </div>
+
+      <!-- ── IMAGE BOSS (grande, centrale) ── -->
+      <div class="relative z-10 flex-1 flex items-center justify-center overflow-hidden">
+        <img
+          :src="boss.imageUrl"
+          x-show="boss.imageUrl"
+          alt=""
+          class="h-full w-auto max-w-full object-contain"
+          style="filter: drop-shadow(0 0 40px rgba(67,67,186,0.65));"
+        />
+
+        <!-- Dégâts sur le boss -->
+        <img
+          x-show="degatBossVisible"
+          x-transition:enter="transition duration-100"
+          x-transition:enter-start="opacity-0 scale-50"
+          x-transition:enter-end="opacity-100 scale-100"
+          x-transition:leave="transition duration-300"
+          x-transition:leave-end="opacity-0 scale-150"
+          src={degatImg.src}
+          alt=""
+          class="absolute z-20 pointer-events-none"
+          style="top: 30%; left: 50%; transform: translate(-50%, -50%); width: 90px; height: 90px; object-fit: contain;"
+        />
+      </div>
+
+      <!-- ── MOT À DEVINER ── -->
+      <div class="relative z-10 shrink-0 px-4 pb-2">
+        <div class="rounded-2xl px-4 py-3 text-center"
+          style="background: rgba(13,13,59,0.82); border: 2px solid rgba(255,255,255,0.25); backdrop-filter: blur(8px);">
+          <p style="font-family: 'Press Start 2P', monospace; font-size: 13px; color: white;" x-text="question.mot"></p>
+        </div>
+      </div>
+
+      <!-- ── 3 VIDÉOS ── -->
+      <div class="relative z-10 shrink-0 grid grid-cols-3 gap-2 px-4 pb-2" style="height: 110px;">
+        <template x-for="(choix, i) in question.choix" :key="i">
+          <button
+            @click="repondre(i)"
+            :disabled="reponduIndex !== null"
+            x-bind:aria-label="'Choisir la video ' + (i + 1)"
+            :class="choiceClass(i)"
+            style="background: rgba(0,0,0,0.5);"
+          >
+            <video
+              :src="choix.videoUrl"
+              class="h-full w-full object-cover"
+              autoplay={true}
+              loop={true}
+              muted={true}
+              playsinline={true}
+              preload="auto"
+            ></video>
+          </button>
+        </template>
+      </div>
+
+      <!-- ── JOUEUR (bas) ── -->
+      <div class="relative z-10 shrink-0 flex items-center justify-between px-4 pb-5 pt-2"
+        style="background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%);">
+
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <img
+              :src="playerAvatarUrl || defaultGhost"
+              alt="Ton personnage"
+              class="h-14 w-14 object-contain transition-transform duration-100"
+              :class="degatVisible ? 'scale-75' : 'scale-100'"
+            />
+            <!-- Image dégât ghost -->
+            <img
+              x-show="degatVisible"
+              x-transition:enter="transition duration-100"
+              x-transition:enter-start="opacity-0 scale-50"
+              x-transition:enter-end="opacity-100 scale-100"
+              x-transition:leave="transition duration-300"
+              x-transition:leave-end="opacity-0 scale-150"
+              src={degatImg.src}
+              alt=""
+              class="absolute -top-4 -right-3 h-10 w-10 object-contain"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <div class="h-3.5 rounded-full bg-white/20 overflow-hidden border border-white/20" style="width: 110px;">
+              <div class="h-full rounded-full transition-all duration-500"
+                :style="`width: ${pvJoueur}%; background: ${pvJoueur > 50 ? '#22c55e' : pvJoueur > 25 ? '#eab308' : '#ef4444'}`"
+              ></div>
+            </div>
+            <span style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: rgba(255,255,255,0.75);">Toi</span>
+          </div>
+        </div>
+
+        <!-- Score bonnes réponses -->
+        <div class="flex flex-col items-center gap-1">
+          <span style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: rgba(255,255,255,0.5);">SCORE</span>
+          <span style="font-family: 'Press Start 2P', monospace; font-size: 14px; color: white;" x-text="bonnesReponses"></span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════ ÉCRAN FIN ══════════════ -->
+    <div
+      x-show="phase === 'fin'"
+      x-transition:enter="transition ease-out duration-700"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      class="absolute inset-0 z-20"
+    >
+      <!-- Image plein écran -->
+      <img x-show="victoire" src={winImg.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center" />
+      <img x-show="!victoire" src={gameoverImg.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center" />
+      <!-- Overlay gradient + boutons -->
+      <div
+        class="absolute inset-0 flex flex-col justify-end pb-12 px-8"
+        style="background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%);"
+      >
+        <!-- Animation XP (victoire seulement) -->
+        <div x-show="victoire" class="flex flex-col items-center mb-4 gap-2">
+          <div
+            x-show="xpGained > 0"
+            x-transition:enter="transition ease-out duration-500"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            style="font-family:'Press Start 2P',monospace;font-size:14px;color:#FFD700;text-shadow:0 0 12px rgba(255,215,0,0.8);"
+            x-text="`+${xpGained} XP`"
+          ></div>
+          <div
+            x-show="leveledUp"
+            x-transition:enter="transition ease-out duration-600"
+            x-transition:enter-start="opacity-0 scale-50"
+            x-transition:enter-end="opacity-100 scale-100"
+            class="px-4 py-2 rounded-full"
+            style="background:linear-gradient(135deg,#FFD700,#FF8C00);font-family:'Press Start 2P',monospace;font-size:10px;color:white;"
+            x-text="`NIVEAU ${newLevel} !`"
+          ></div>
+        </div>
+
+        <div class="flex flex-col gap-3 w-full">
+          <button
+            @click="recommencer()"
+            class="w-full rounded-2xl py-4 font-bold text-white transition-opacity active:opacity-70"
+            style="
+              background: linear-gradient(160deg, #9B5EFF 0%, #6B28D4 100%);
+              border: 2.5px solid rgba(255,255,255,0.75);
+              box-shadow: 0 5px 0 #2D0E6E;
+              font-family: 'Press Start 2P', monospace; font-size: 12px;
+            "
+          >REJOUER</button>
+          <a
+            href="/jeux"
+            class="w-full rounded-2xl py-4 text-center font-bold text-white/70 transition-opacity active:opacity-70"
+            style="border: 2px solid rgba(255,255,255,0.35); font-family: 'Press Start 2P', monospace; font-size: 11px;"
+          >ACCUEIL</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chargement -->
+    <div x-show="phase === 'chargement'" class="flex h-full items-center justify-center">
+      <div class="h-12 w-12 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <!-- Erreur -->
+    <div x-show="phase === 'erreur'" class="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+      <p class="text-red-300 text-sm" x-text="erreur"></p>
+      <a href="/jeux" class="text-white/60 underline text-sm">Retour aux jeux</a>
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+  import { gainXP } from '../../lib/xp.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('bossGame', () => ({
+      phase: 'chargement' as 'chargement' | 'jeu' | 'fin' | 'erreur',
+      erreur: '',
+      boss: { nom: '', imageUrl: '', degats: 10, degats_mauvais: 10 },
+      tousLesSignes: [] as any[],
+      pvBoss: 100,
+      pvJoueur: 100,
+      question: { mot: '', choix: [] as any[], bonneReponse: 0 },
+      reponduIndex: null as number | null,
+      victoire: false,
+      xpGained: 0,
+      leveledUp: false,
+      newLevel: 1,
+      bonnesReponses: 0,
+      mauvaisesReponses: 0,
+      degatVisible: false,
+      degatBossVisible: false,
+      playerAvatarUrl: '',
+      defaultGhost: '',
+
+      async init() {
+        try {
+          this.defaultGhost = document.querySelector('[data-ghost-default]')?.getAttribute('data-ghost-default') || '';
+
+          if (pb.authStore.isValid) {
+            try {
+              const userId = String(pb.authStore.model?.id ?? '');
+              if (!userId) throw new Error('Utilisateur introuvable.');
+
+              // 1. Lire depuis localStorage en priorité
+              try {
+                const cached = JSON.parse(localStorage.getItem('gestu_avatar_' + userId) || 'null');
+                if (cached?.imageUrl) this.playerAvatarUrl = cached.imageUrl;
+              } catch {}
+
+              // 2. Sinon PocketBase
+              if (!this.playerAvatarUrl) {
+                const user = await pb.collection('Utilisateurs').getOne(userId, { requestKey: null });
+                const avatarId = user?.avatar;
+                if (avatarId) {
+                  const skin = await pb.collection('Objets_boutique').getOne(avatarId, { requestKey: null });
+                  const f = skin?.image || skin?.image_avatar;
+                  this.playerAvatarUrl = f ? pb.files.getURL(skin, f) : '';
+                }
+              }
+            } catch {
+              this.playerAvatarUrl = '';
+            }
+          }
+
+          // Charger le boss ultime (premier de la liste)
+          const bosses = await pb.collection('boss').getFullList({
+            requestKey: null,
+            sort: 'created',
+          });
+          const b = bosses[0];
+          this.boss = {
+            nom: b.nom ?? 'Boss',
+            imageUrl: b.image ? pb.files.getURL(b, b.image) + `?t=${b.updated}` : '',
+            degats: b.degats_par_bonne_reponse ?? 20,
+            degats_mauvais: b.degats_mauvaise_reponse ?? 20,
+          };
+          this.pvBoss = b.points_vie ?? 100;
+
+          // Charger tous les signes qui ont une vidéo
+          const signes = await pb.collection('Signes').getFullList({
+            requestKey: null,
+          });
+          this.tousLesSignes = signes
+            .filter((s: any) => s.video && s.mot)
+            .map((s: any) => ({
+              id: s.id,
+              mot: s.mot,
+              videoUrl: pb.files.getURL(s, s.video) + `?t=${s.updated}`,
+            }));
+
+          if (this.tousLesSignes.length < 3) {
+            this.erreur = 'Pas assez de signes avec vidéo dans PocketBase (minimum 3).';
+            this.phase = 'erreur';
+            return;
+          }
+
+          this.phase = 'jeu';
+          this.nouvelleQuestion();
+        } catch (e: any) {
+          this.erreur = e?.message ?? 'Erreur de connexion PocketBase.';
+          this.phase = 'erreur';
+        }
+      },
+
+      nouvelleQuestion() {
+        // Mélanger et choisir le signe de la bonne réponse
+        const melange = [...this.tousLesSignes].sort(() => Math.random() - 0.5);
+        const bon = melange[0];
+        // 2 leurres différents
+        const leurres = melange.slice(1, 3);
+
+        // Construire les 3 choix et mélanger
+        const choix = [
+          { videoUrl: bon.videoUrl, correct: true },
+          { videoUrl: leurres[0].videoUrl, correct: false },
+          { videoUrl: leurres[1].videoUrl, correct: false },
+        ].sort(() => Math.random() - 0.5);
+
+        this.question = {
+          mot: bon.mot,
+          choix,
+          bonneReponse: choix.findIndex((c: any) => c.correct),
+        };
+        this.reponduIndex = null;
+      },
+
+      choiceClass(i: number) {
+        const base = 'relative overflow-hidden rounded-2xl border-2 transition-all active:scale-95';
+        if (this.reponduIndex === null) return `${base} border-white/30`;
+        if (i === this.question.bonneReponse) return `${base} border-green-400 ring-2 ring-green-400`;
+        if (this.reponduIndex === i) return `${base} border-red-400 ring-2 ring-red-400`;
+        return `${base} border-white/10 opacity-40`;
+      },
+
+      async repondre(index: number) {
+        if (this.reponduIndex !== null) return;
+        this.reponduIndex = index;
+
+        const correct = index === this.question.bonneReponse;
+
+        if (correct) {
+          this.bonnesReponses++;
+          this.pvBoss = Math.max(0, this.pvBoss - this.boss.degats);
+          this.degatBossVisible = true;
+          setTimeout(() => { this.degatBossVisible = false; }, 600);
+        } else {
+          this.mauvaisesReponses++;
+          this.pvJoueur = Math.max(0, this.pvJoueur - this.boss.degats_mauvais);
+          this.degatVisible = true;
+          setTimeout(() => { this.degatVisible = false; }, 600);
+        }
+
+        // Attendre retour visuel
+        await new Promise(r => setTimeout(r, 800));
+
+        // Vérifier fin de partie
+        if (this.pvBoss <= 0) {
+          this.victoire = true;
+          this.phase = 'fin';
+          try {
+            const r = await gainXP(20);
+            this.xpGained = r.xpGain;
+            this.leveledUp = r.leveledUp;
+            this.newLevel = r.newLevel;
+          } catch {}
+          return;
+        }
+        if (this.pvJoueur <= 0) {
+          this.victoire = false;
+          this.phase = 'fin';
+          return;
+        }
+
+        // Attendre un court instant puis nouvelle question
+        await new Promise(r => setTimeout(r, 400));
+        this.nouvelleQuestion();
+      },
+
+      recommencer() {
+        this.pvBoss = 100;
+        this.pvJoueur = 100;
+        this.bonnesReponses = 0;
+        this.mauvaisesReponses = 0;
+        this.victoire = false;
+        this.xpGained = 0;
+        this.leveledUp = false;
+        this.reponduIndex = null;
+        this.degatVisible = false;
+        this.degatBossVisible = false;
+        this.phase = 'jeu';
+        this.nouvelleQuestion();
+      },
+    }));
+  });
+</script>

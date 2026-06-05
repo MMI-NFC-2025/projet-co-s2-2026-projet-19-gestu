@@ -1,0 +1,471 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import retour from '../../assets/icon/fleche_retour.svg';
+import coeur from '../../assets/icon/coeur.svg';
+import fond from '../../assets/img/fond_jeu_tap.avif';
+import arcade from '../../assets/img/arcade_jeu_tap.avif';
+import degatImg from '../../assets/img/degat.avif';
+import winImg from '../../assets/img/win.avif';
+import gameoverImg from '../../assets/img/gameover.avif';
+---
+
+<Layout title="Gestu — Tap">
+  <div
+    class="relative h-screen w-full overflow-hidden select-none"
+    x-data="tapGame()"
+    x-init="init()"
+  >
+
+    <!-- ══ FOND ══ -->
+    <img src={fond.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center pointer-events-none" />
+
+    <!-- ══ CHARGEMENT ══ -->
+    <div x-show="phase === 'chargement'" class="relative z-10 flex h-full items-center justify-center">
+      <div class="h-12 w-12 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <!-- ══ ERREUR ══ -->
+    <div x-show="phase === 'erreur'" class="relative z-10 flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+      <p class="text-red-300 text-sm" x-text="erreur" role="alert"></p>
+      <a href="/jeux" class="text-white/60 underline text-sm">Retour aux jeux</a>
+    </div>
+
+    <!-- ══ JEU ══ -->
+    <div x-show="phase === 'jeu'" class="absolute inset-0 z-10 flex flex-col">
+
+      <!-- Header : vies + score + manche -->
+      <div class="shrink-0 flex items-center justify-between px-4 pt-3 pb-1">
+        <div class="flex gap-1" role="status" :aria-label="`${vies} vies restantes`">
+          <template x-for="i in viesMax" :key="i">
+            <img
+              src={coeur.src}
+              alt=""
+              aria-hidden="true"
+              class="transition-all duration-300"
+              :class="i <= vies ? 'opacity-100 scale-100' : 'opacity-20 scale-75'"
+              style="width:22px;height:22px;object-fit:contain;"
+            />
+          </template>
+        </div>
+        <span
+          class="text-white drop-shadow"
+          style="font-family: 'Press Start 2P', monospace; font-size: 10px;"
+          x-text="`${score} pts`"
+        ></span>
+        <span
+          class="text-white/50 drop-shadow"
+          style="font-family: 'Press Start 2P', monospace; font-size: 8px;"
+          x-text="`${manche}/${totalManches}`"
+        ></span>
+      </div>
+
+      <!-- Arcade machine + vidéo + mots -->
+      <div class="relative flex-1 flex items-end justify-center">
+
+        <!-- Arcade machine image (ancrée en bas) -->
+        <div class="relative w-full" style="max-width: 480px;">
+          <img src={arcade.src} alt="" class="w-full h-auto block" />
+
+          <!-- Vidéo sur l'écran de la borne -->
+          <div
+            class="absolute overflow-hidden bg-black"
+            style="top: 13%; left: 22.5%; width: 55%; height: 32%; border-radius: 4px;"
+          >
+            <video
+              x-ref="videoEl"
+              class="h-full w-full object-cover"
+              autoplay
+              loop
+              playsinline
+              preload="auto"
+            ></video>
+            <!-- Cadre feedback réponse -->
+            <div
+              class="absolute inset-0 pointer-events-none transition-all duration-300"
+              :style="feedbackColor === 'green'
+                ? 'border: 4px solid #22c55e; box-shadow: inset 0 0 16px rgba(34,197,94,0.5); border-radius: 4px;'
+                : feedbackColor === 'red'
+                ? 'border: 4px solid #ef4444; box-shadow: inset 0 0 16px rgba(239,68,68,0.5); border-radius: 4px;'
+                : 'border: 4px solid transparent; border-radius: 4px;'"
+            ></div>
+          </div>
+
+          <!-- Mots sortant des trous (rangée 3 + rangée 2) -->
+          <!-- Rangée haute : trous 0-1-2, positionnés au-dessus de chaque trou -->
+          <div class="absolute" style="top: 50%; left: 2%; right: 2%;">
+            <div class="grid grid-cols-3 gap-x-2">
+              <template x-for="(trou, i) in trous.slice(0, 3)" :key="i">
+                <div class="overflow-hidden flex justify-center" style="height: 36px;">
+                  <button
+                    x-show="trou.visible"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-full"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-full"
+                    @click="taper(i, $event)"
+                    :aria-label="`Taper le mot : ${trou.mot}`"
+                    class="bg-transparent border-none p-0 active:opacity-50"
+                    style="font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 1.4; color: #fff; text-shadow: 0 0 8px rgba(180,120,255,0.9), 0 1px 3px rgba(0,0,0,0.9); white-space: nowrap;"
+                    x-text="trou.mot"
+                  ></button>
+                </div>
+              </template>
+            </div>
+          </div>
+          <!-- Rangée basse : trous 3-4, positionnés au-dessus des 2 trous du bas -->
+          <div class="absolute flex justify-around" style="top: 57%; left: 8%; right: 8%;">
+            <template x-for="(trou, j) in trous.slice(3, 5)" :key="j + 3">
+              <div class="overflow-hidden flex justify-center" style="height: 36px; width: 40%;">
+                <button
+                  x-show="trou.visible"
+                  x-transition:enter="transition ease-out duration-300"
+                  x-transition:enter-start="opacity-0 translate-y-full"
+                  x-transition:enter-end="opacity-100 translate-y-0"
+                  x-transition:leave="transition ease-in duration-200"
+                  x-transition:leave-start="opacity-100 translate-y-0"
+                  x-transition:leave-end="opacity-0 translate-y-full"
+                  @click="taper(j + 3, $event)"
+                  :aria-label="`Taper le mot : ${trou.mot}`"
+                  class="bg-transparent border-none p-0 active:opacity-50"
+                  style="font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 1.4; color: #fff; text-shadow: 0 0 8px rgba(180,120,255,0.9), 0 1px 3px rgba(0,0,0,0.9); white-space: nowrap;"
+                  x-text="trou.mot"
+                ></button>
+              </div>
+            </template>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Effet dégât au clic -->
+      <img
+        x-show="degatVisible"
+        x-transition:enter="transition duration-75"
+        x-transition:enter-start="opacity-0 scale-50"
+        x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-350"
+        x-transition:leave-start="opacity-100 scale-100"
+        x-transition:leave-end="opacity-0 scale-150"
+        :style="`position: fixed; left: ${degatPos.x - 24}px; top: ${degatPos.y - 24}px; width: 48px; height: 48px; pointer-events: none; z-index: 50;`"
+        src={degatImg.src}
+        alt=""
+        aria-hidden="true"
+      />
+
+    </div>
+
+    <!-- Flash feedback -->
+    <div
+      x-show="flash !== ''"
+      x-transition:enter="transition duration-100"
+      x-transition:enter-start="opacity-0 scale-50"
+      x-transition:enter-end="opacity-100 scale-100"
+      x-transition:leave="transition duration-300"
+      x-transition:leave-end="opacity-0"
+      class="absolute inset-0 z-30 flex items-center justify-center pointer-events-none"
+      aria-hidden="true"
+    >
+      <span
+        class="text-white drop-shadow-lg"
+        style="font-family: 'Press Start 2P', monospace; font-size: 22px; text-shadow: 0 0 16px rgba(180,120,255,1);"
+        x-text="flash"
+      ></span>
+    </div>
+
+    <!-- ══ FIN ══ -->
+    <div
+      x-show="phase === 'fin'"
+      x-transition:enter="transition ease-out duration-700"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      class="absolute inset-0 z-20"
+    >
+      <!-- Image plein écran -->
+      <img x-show="victoire" src={winImg.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center" />
+      <img x-show="!victoire" src={gameoverImg.src} alt="" class="absolute inset-0 h-full w-full object-cover object-center" />
+      <!-- Overlay gradient + boutons -->
+      <div
+        class="absolute inset-0 flex flex-col justify-end pb-12 px-8"
+        style="background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%);"
+      >
+        <!-- Animation XP (victoire seulement) -->
+        <div x-show="victoire" class="flex flex-col items-center mb-4 gap-2">
+          <div
+            x-show="xpGained > 0"
+            x-transition:enter="transition ease-out duration-500"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            style="font-family:'Press Start 2P',monospace;font-size:14px;color:#FFD700;text-shadow:0 0 12px rgba(255,215,0,0.8);"
+            x-text="`+${xpGained} XP`"
+          ></div>
+          <div
+            x-show="leveledUp"
+            x-transition:enter="transition ease-out duration-600"
+            x-transition:enter-start="opacity-0 scale-50"
+            x-transition:enter-end="opacity-100 scale-100"
+            class="px-4 py-2 rounded-full"
+            style="background:linear-gradient(135deg,#FFD700,#FF8C00);font-family:'Press Start 2P',monospace;font-size:10px;color:white;"
+            x-text="`NIVEAU ${newLevel} !`"
+          ></div>
+        </div>
+
+        <div class="flex flex-col gap-3 w-full">
+          <button
+            @click="recommencer()"
+            class="w-full rounded-2xl py-4 font-bold text-white transition-opacity active:opacity-70"
+            style="
+              background: linear-gradient(160deg, #9B5EFF 0%, #6B28D4 100%);
+              border: 2.5px solid rgba(255,255,255,0.75);
+              box-shadow: 0 5px 0 #2D0E6E;
+              font-family: 'Press Start 2P', monospace; font-size: 12px;
+            "
+          >REJOUER</button>
+          <a
+            href="/jeux"
+            class="w-full rounded-2xl py-4 text-center font-bold text-white/70 transition-opacity active:opacity-70"
+            style="border: 2px solid rgba(255,255,255,0.35); font-family: 'Press Start 2P', monospace; font-size: 11px;"
+          >ACCUEIL</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bouton retour (en jeu) -->
+    <div x-show="phase === 'jeu'" class="absolute top-3 right-4 z-20">
+      <a
+        href="/jeux"
+        aria-label="Retour aux jeux"
+        class="flex items-center justify-center rounded-full"
+        style="width:36px;height:36px;background:rgba(30,10,70,0.75);border:1.5px solid rgba(255,255,255,0.35);box-shadow:0 2px 10px rgba(0,0,0,0.6);"
+      >
+        <img src={retour.src} alt="" class="h-5 w-5" />
+      </a>
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+  import { gainXP } from '../../lib/xp.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('tapGame', () => ({
+      phase: 'chargement' as 'chargement' | 'jeu' | 'fin' | 'erreur',
+      erreur: '',
+      xpGained: 0,
+      leveledUp: false,
+      newLevel: 1,
+      signes: [] as any[],
+      currentSign: null as any,
+      manche: 0,
+      totalManches: 10,
+      score: 0,
+      vies: 5,
+      viesMax: 5,
+      victoire: false,
+      repondu: false,
+      flash: '',
+      feedbackColor: '' as '' | 'green' | 'red',
+      degatVisible: false,
+      degatPos: { x: 0, y: 0 },
+      // 6 trous — mutés directement pour la réactivité Alpine
+      trous: [
+        { mot: '', visible: false, correct: false, tapped: false },
+        { mot: '', visible: false, correct: false, tapped: false },
+        { mot: '', visible: false, correct: false, tapped: false },
+        { mot: '', visible: false, correct: false, tapped: false },
+        { mot: '', visible: false, correct: false, tapped: false },
+      ] as { mot: string; visible: boolean; correct: boolean; tapped: boolean }[],
+      _timers: [] as ReturnType<typeof setTimeout>[],
+
+      async init() {
+        try {
+          // TODO: charger depuis PocketBase (collection Signes, champs mot + video requis)
+          const signes = await pb.collection('Signes').getFullList({ requestKey: null });
+          this.signes = signes
+            .filter((s: any) => s.video && s.mot)
+            .map((s: any) => ({
+              mot: s.mot,
+              videoUrl: pb.files.getURL(s, s.video) + `?t=${s.updated}`,
+            }));
+          if (this.signes.length < 3) {
+            this.erreur = 'Pas assez de signes avec vidéo dans PocketBase (minimum 3).';
+            this.phase = 'erreur';
+            return;
+          }
+          this.phase = 'jeu';
+          this.nouvelleSigne();
+        } catch (e: any) {
+          this.erreur = e?.message ?? 'Erreur de connexion PocketBase.';
+          this.phase = 'erreur';
+        }
+      },
+
+      resetTrous() {
+        this.trous.forEach(t => {
+          t.mot = ''; t.visible = false; t.correct = false; t.tapped = false;
+        });
+      },
+
+      clearTimers() {
+        this._timers.forEach(t => clearTimeout(t));
+        this._timers = [];
+      },
+
+      showFlash(emoji: string) {
+        this.flash = emoji;
+        this._timers.push(setTimeout(() => { this.flash = ''; }, 700));
+      },
+
+      // Passe au signe suivant (nouvelle vidéo)
+      async nouvelleSigne() {
+        if (this.vies <= 0)                   { this.victoire = false; this.phase = 'fin'; return; }
+        if (this.manche >= this.totalManches) {
+          this.victoire = true;
+          this.phase = 'fin';
+          try {
+            const r = await gainXP(20);
+            this.xpGained = r.xpGain;
+            this.leveledUp = r.leveledUp;
+            this.newLevel = r.newLevel;
+          } catch {}
+          return;
+        }
+
+        this.manche++;
+
+        // Évite de rejouer le même signe deux fois de suite
+        const pool = this.signes.length > 1
+          ? this.signes.filter((s: any) => s.mot !== this.currentSign?.mot)
+          : this.signes;
+        this.currentSign = pool[Math.floor(Math.random() * pool.length)];
+
+        // Change la vidéo (force le rechargement même si même URL)
+        this.$nextTick(() => {
+          const v = this.$refs.videoEl as HTMLVideoElement;
+          if (v) {
+            v.pause();
+            v.removeAttribute('src');
+            v.src = this.currentSign.videoUrl;
+            v.load();
+            v.play().catch(() => {});
+          }
+        });
+
+        this.lancerMots();
+      },
+
+      // Relance les mots pour le signe courant (sans changer la vidéo)
+      lancerMots() {
+        this.repondu = false;
+        this.resetTrous();
+        this.clearTimers();
+
+        const sign = this.currentSign;
+
+        // 4 leurres (mots différents du signe correct)
+        const decoys = this.signes
+          .filter((s: any) => s.mot !== sign.mot)
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 4);
+
+        // Attribution aléatoire d'un trou par mot (5 trous)
+        const holeOrder = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
+        const correctHole = holeOrder[0];
+
+        // ── Bon mot : apparaît entre 1 s et 3 s, reste 4 s ──
+        const correctDelay    = 1000 + Math.floor(Math.random() * 2000);
+        const correctDuration = 4000;
+
+        this._timers.push(setTimeout(() => {
+          if (this.repondu) return;
+          this.trous[correctHole].mot     = sign.mot;
+          this.trous[correctHole].correct = true;
+          this.trous[correctHole].visible = true;
+
+          // Bon mot raté → même vidéo, on relance juste les mots
+          setTimeout(() => {
+            if (this.repondu) return;
+            this.trous[correctHole].visible = false;
+            this.repondu = true;
+            this.clearTimers();
+            this.showFlash('');
+            this._timers.push(setTimeout(() => this.lancerMots(), 900));
+          }, correctDuration);
+        }, correctDelay));
+
+        // ── Leurres : chacun dans un trou différent, à un moment aléatoire ──
+        decoys.forEach((s: any, idx: number) => {
+          const hole     = holeOrder[idx + 1];
+          const delay    = 500  + Math.floor(Math.random() * 3500);
+          const duration = 2000 + Math.floor(Math.random() * 2000);
+
+          this._timers.push(setTimeout(() => {
+            if (this.repondu || this.trous[hole].visible) return;
+            this.trous[hole].mot     = s.mot;
+            this.trous[hole].correct = false;
+            this.trous[hole].tapped  = false;
+            this.trous[hole].visible = true;
+            setTimeout(() => {
+              if (this.repondu) return;
+              this.trous[hole].visible = false;
+            }, duration);
+          }, delay));
+        });
+        // Pas de timeout — le joueur peut prendre son temps
+      },
+
+      taper(index: number, event?: Event) {
+        const trou = this.trous[index];
+        if (!trou.visible || trou.tapped) return;
+        trou.tapped = true;
+
+        // Effet dégât à la position du clic/touch (duck-typing pour éviter instanceof TouchEvent)
+        const e = event as any;
+        const clientX = e?.changedTouches?.[0]?.clientX ?? e?.touches?.[0]?.clientX ?? e?.clientX ?? window.innerWidth / 2;
+        const clientY = e?.changedTouches?.[0]?.clientY ?? e?.touches?.[0]?.clientY ?? e?.clientY ?? window.innerHeight / 2;
+        this.degatPos = { x: clientX, y: clientY };
+        this.degatVisible = true;
+        this._timers.push(setTimeout(() => { this.degatVisible = false; }, 600));
+
+        if (trou.correct) {
+          // Bon mot → +10 pts, cadre vert, manche suivante
+          this.repondu = true;
+          this.clearTimers();
+          this.score += 10;
+          this.feedbackColor = 'green';
+          this._timers.push(setTimeout(() => { this.feedbackColor = ''; }, 600));
+          this._timers.push(setTimeout(() => this.nouvelleSigne(), 700));
+        } else {
+          // Mauvais mot → cadre rouge, perd une vie
+          trou.visible = false;
+          this.vies--;
+          this.feedbackColor = 'red';
+          this._timers.push(setTimeout(() => { this.feedbackColor = ''; }, 600));
+          if (this.vies <= 0) {
+            this.clearTimers();
+            this.victoire = false;
+            this.repondu = true;
+            this._timers.push(setTimeout(() => { this.phase = 'fin'; }, 400));
+          }
+        }
+      },
+
+      recommencer() {
+        this.clearTimers();
+        this.manche      = 0;
+        this.score       = 0;
+        this.vies        = this.viesMax;
+        this.victoire    = false;
+        this.repondu     = false;
+        this.flash       = '';
+        this.degatVisible = false;
+        this.currentSign = null;
+        this.resetTrous();
+        this.nouvelleSigne();
+      },
+    }));
+  });
+</script>

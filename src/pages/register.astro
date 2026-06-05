@@ -1,0 +1,184 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ghost from '../assets/icon/ghostcreationcompte.svg';
+import logo from '../assets/icon/logo_typographique.svg';
+import btnCreer from '../assets/icon/creer_ton_compte.svg';
+---
+
+<Layout title="Gestu — Créer un compte">
+  <div
+    class="flex min-h-screen w-full flex-col overflow-y-auto"
+    style="background: radial-gradient(circle at 50% 50%, #4343BA 6%, #1F1F8F 29%, #0D0D3B 83%);"
+    x-data="registerForm()"
+  >
+
+    <!-- Barre supérieure : pastilles + ghost -->
+    <div class="relative flex items-start justify-center px-4 pt-6">
+      <div class="flex items-center gap-2 pt-1" role="progressbar" aria-label="Étape 5 sur 5" aria-valuenow={5} aria-valuemin={1} aria-valuemax={5}>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/60" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/70" aria-hidden="true"></span>
+        <span class="block h-3.5 w-3.5 rounded-full bg-white" aria-hidden="true"></span>
+      </div>
+      <img src={ghost.src} alt="" class="absolute right-4 top-0 h-20 w-20 object-contain" />
+    </div>
+
+    <!-- Formulaire -->
+    <div class="flex flex-col px-8 pb-10 pt-4">
+
+      <!-- Message d'erreur -->
+      <div
+        x-show="erreur"
+        x-text="erreur"
+        role="alert"
+        aria-live="assertive"
+        class="mb-4 rounded-lg bg-red-500/20 px-4 py-2 text-center text-sm text-red-300"
+      ></div>
+
+      <!-- Pseudo -->
+      <label for="reg-pseudo" class="mb-1 text-lg font-bold text-white">Pseudo</label>
+      <input
+        id="reg-pseudo"
+        type="text"
+        x-model="pseudo"
+        placeholder="Ton pseudo"
+        class="mb-5 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
+        autocomplete="username"
+      />
+
+      <!-- Email (requis par PocketBase pour l'authentification) -->
+      <label for="reg-email" class="mb-1 text-lg font-bold text-white">Email</label>
+      <input
+        id="reg-email"
+        type="email"
+        x-model="email"
+        placeholder="ton@email.com"
+        class="mb-5 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
+        autocomplete="email"
+      />
+
+      <!-- Age -->
+      <label for="reg-age" class="mb-1 text-lg font-bold text-white">Age</label>
+      <input
+        id="reg-age"
+        type="number"
+        x-model="age"
+        placeholder="Ton âge"
+        min="1"
+        max="120"
+        class="mb-5 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
+      />
+
+      <!-- Mot de passe -->
+      <label for="reg-password" class="mb-1 text-lg font-bold text-white">Mot de passe</label>
+      <input
+        id="reg-password"
+        type="password"
+        x-model="motdepasse"
+        placeholder="••••••••"
+        class="mb-5 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
+        autocomplete="new-password"
+      />
+
+      <!-- Confirmer le mot de passe -->
+      <label for="reg-confirm" class="mb-1 text-lg font-bold text-white">Confirmer le mot de passe</label>
+      <input
+        id="reg-confirm"
+        type="password"
+        x-model="confirmation"
+        placeholder="••••••••"
+        class="mb-8 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
+        autocomplete="new-password"
+      />
+
+      <!-- Bouton Créer ton compte -->
+      <div class="flex justify-center">
+        <button
+          @click="creerCompte()"
+          :disabled="chargement"
+          class="w-64 transition-transform active:scale-95 disabled:opacity-60"
+        >
+          <img x-show="!chargement" src={btnCreer.src} alt="Crée ton compte" class="w-full" />
+          <span x-show="chargement" class="block w-full rounded-xl bg-blue-700 py-4 text-center text-xl font-bold text-white">Création...</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Logo Gestu (bas gauche) -->
+    <div class="mt-auto px-6 pb-6">
+      <img src={logo.src} alt="Gestu" class="h-10 object-contain" />
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('registerForm', () => ({
+      pseudo: '',
+      email: '',
+      age: '',
+      motdepasse: '',
+      confirmation: '',
+      erreur: '',
+      chargement: false,
+
+      async creerCompte() {
+        this.erreur = '';
+
+        // Validation basique
+        if (!this.pseudo || !this.email || !this.age || !this.motdepasse || !this.confirmation) {
+          this.erreur = 'Remplis tous les champs.';
+          return;
+        }
+        if (this.motdepasse !== this.confirmation) {
+          this.erreur = 'Les mots de passe ne correspondent pas.';
+          return;
+        }
+        if (this.motdepasse.length < 8) {
+          this.erreur = 'Le mot de passe doit faire au moins 8 caractères.';
+          return;
+        }
+
+        this.chargement = true;
+        try {
+          // TODO: PocketBase — création du compte dans la collection Utilisateurs
+          await pb.collection('Utilisateurs').create({
+            email: this.email,
+            password: this.motdepasse,
+            passwordConfirm: this.confirmation,
+            pseudo: this.pseudo,
+            age: parseInt(this.age),
+            xp: 0,
+            coins: 0,
+            date_creation_compte: new Date().toISOString(),
+          });
+
+          // Connexion automatique après inscription (si échec, redirige vers /login)
+          try {
+            await pb.collection('Utilisateurs').authWithPassword(this.pseudo, this.motdepasse);
+            window.location.href = '/dashboard';
+          } catch {
+            window.location.href = '/login';
+          }
+        } catch (e: any) {
+          const err = e;
+          console.error('Register error:', JSON.stringify(err?.response || err));
+          const data = err?.response?.data || {};
+          this.erreur = data?.pseudo?.message
+            || data?.email?.message
+            || data?.password?.message
+            || data?.age?.message
+            || err?.response?.message
+            || err?.message
+            || 'Une erreur est survenue.';
+        } finally {
+          this.chargement = false;
+        }
+      }
+    }));
+  });
+</script>

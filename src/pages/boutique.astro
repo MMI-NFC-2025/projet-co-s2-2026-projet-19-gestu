@@ -1,0 +1,65 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BottomNav from '../components/BottomNav.astro';
+import PageHeader from '../components/PageHeader.astro';
+import gestuGhost from '../assets/icon/gestu_ghost.svg';
+import signes from '../assets/icon/signe_boutique.svg';
+import gestuCoins from '../assets/icon/gestucoins_boutique.svg';
+---
+
+<Layout title="Gestu — Boutique">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: linear-gradient(180deg, #0D0D3B 0%, #1a0a4a 100%);"
+    x-data="boutiqueData()"
+    x-init="init()"
+  >
+
+    <PageHeader retourHref="/dashboard" retourLabel="Retour au tableau de bord" />
+
+    <!-- Boutons boutique -->
+    <main class="flex flex-1 flex-col items-center justify-evenly py-4">
+
+      <!-- Gestu Ghost -->
+      <a href="/personnalisation" class="transition-transform active:scale-95 block" style="width:320px;height:150px;overflow:hidden;border-radius:8px;">
+        <img src={gestuGhost.src} alt="Gestu Ghost" style="width:320px;height:auto;" class="drop-shadow-xl" />
+      </a>
+
+      <!-- Signes -->
+      <a href="/boutique/signes" class="transition-transform active:scale-95 block" style="width:320px;height:150px;overflow:hidden;border-radius:8px;">
+        <img src={signes.src} alt="Signes" style="width:320px;height:auto;" class="drop-shadow-xl" />
+      </a>
+
+      <!-- Gestu Coin -->
+      <a href="/boutique/coins" class="transition-transform active:scale-95 block" style="width:320px;height:150px;overflow:hidden;border-radius:8px;">
+        <img src={gestuCoins.src} alt="Gestu Coin" style="width:320px;height:auto;" class="drop-shadow-xl" />
+      </a>
+
+    </main>
+
+    <!-- Navigation bas -->
+    <BottomNav active="boutique" />
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('boutiqueData', () => ({
+      coins: 0,
+      xp: 0,
+      xpMax: 100,
+      xpPercent: 0,
+
+      async init() {
+        const DEV_MODE = true;
+        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
+        this.coins = user?.coins ?? 0;
+        this.xp = user?.xp ?? 0;
+        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+      }
+    }));
+  });
+</script>

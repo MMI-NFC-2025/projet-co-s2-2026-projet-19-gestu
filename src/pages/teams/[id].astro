@@ -1,0 +1,292 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ghostPlaceholder from '../../assets/icon/gestu_ghost.svg';
+import chatTeamSvg from '../../assets/icon/chatteam.svg';
+import retourAccueilSvg from '../../assets/icon/icone_retour_acceuil.svg';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+---
+
+<Layout title="Gestu — Team">
+  <div
+    class="relative h-screen w-full overflow-hidden select-none"
+    style="background: linear-gradient(180deg, #0A0A2E 0%, #202094 100%);"
+    data-team-id={id}
+    data-ghost={ghostPlaceholder.src}
+    x-data="teamPage()"
+    x-init="init()"
+  >
+
+    <!-- ══ CHARGEMENT ══ -->
+    <div x-show="loading" class="flex h-full items-center justify-center">
+      <div class="h-10 w-10 animate-spin rounded-full border-4 border-purple-300 border-t-transparent"></div>
+    </div>
+
+    <!-- ══ ERREUR ══ -->
+    <div x-show="erreur !== ''" class="flex h-full flex-col items-center justify-center px-8 text-center gap-4">
+      <p x-text="erreur" style="font-family:'Josefin Sans',sans-serif;color:#fca5a5;font-size:14px;"></p>
+      <a href="/teams" style="font-family:'Josefin Sans',sans-serif;color:rgba(255,255,255,0.6);font-size:13px;text-decoration:underline;">Retour aux teams</a>
+    </div>
+
+    <!-- ══ CONTENU ══ -->
+    <div x-show="!loading && erreur === ''" class="flex h-full flex-col px-5 pt-10 pb-6 gap-5">
+
+      <!-- Titre team -->
+      <h1
+        x-text="team.nom"
+        style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:52px;color:white;line-height:1;"
+      ></h1>
+
+      <!-- Liste membres (joueurteamgroupe) -->
+      <div class="flex flex-col gap-2 flex-1 overflow-y-auto">
+        <template x-for="(membre, index) in membres" :key="membre.id">
+          <div class="relative" style="height:53px;flex-shrink:0;">
+            <img src="/joueurteamgroupe.svg" class="absolute inset-0 w-full h-full" style="object-fit:fill;" alt="" />
+            <div class="absolute inset-0 flex items-center">
+              <div class="flex items-center justify-center" style="position:absolute;left:3%;width:13%;">
+                <span x-text="index + 1" style="font-family:'Press Start 2P',monospace;font-size:9px;color:white;"></span>
+              </div>
+              <div class="flex flex-col" style="position:absolute;left:17%;width:26%;overflow:hidden;">
+                <span x-text="membre.pseudo" style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:13px;color:#0D0D3B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                <span x-text="membre.isChef ? 'Chef' : 'Membre'" style="font-family:'Josefin Sans',sans-serif;font-size:10px;color:#3208D2;"></span>
+              </div>
+              <div class="overflow-hidden" style="position:absolute;left:40%;width:11%;aspect-ratio:1;border-radius:50%;border:2px solid white;">
+                <img :src="membre.avatarUrl || ghostSrc" class="w-full h-full object-contain" alt="" />
+              </div>
+              <div class="flex items-center justify-center" style="position:absolute;right:2%;width:9%;">
+                <span x-text="membre.niveaux" style="font-family:'Press Start 2P',monospace;font-size:8px;color:white;"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Aucun membre -->
+        <p
+          x-show="membres.length === 0"
+          class="text-center py-4"
+          style="font-family:'Josefin Sans',sans-serif;color:rgba(255,255,255,0.4);font-size:13px;"
+        >
+          Aucun membre
+        </p>
+      </div>
+
+    </div>
+
+    <!-- ══ 3 ICÔNES BAS ══ -->
+    <div
+      x-show="!loading"
+      class="absolute bottom-6 left-0 right-0 flex justify-center gap-4"
+    >
+      <button type="button" @click="confirmerQuitter = true" class="active:opacity-60 transition-opacity" aria-label="Quitter la team">
+        <img src="/retourteams.svg" alt="Quitter" style="width:62px;height:62px;object-fit:contain;" />
+      </button>
+      <button type="button" class="active:opacity-60 transition-opacity" aria-label="Guerres">
+        <img src="/guerreteam.svg" alt="Guerres" style="width:62px;height:62px;object-fit:contain;" />
+      </button>
+      <button type="button" @click="irAuChat()" class="active:opacity-60 transition-opacity" aria-label="Chat">
+        <img src={chatTeamSvg.src} alt="Chat" style="width:62px;height:62px;object-fit:contain;" />
+      </button>
+      <a href="/dashboard" class="active:opacity-60 transition-opacity" aria-label="Accueil">
+        <img src={retourAccueilSvg.src} alt="Accueil" style="width:62px;height:62px;object-fit:contain;" />
+      </a>
+    </div>
+
+    <!-- ══ CONFIRMATION QUITTER ══ -->
+    <div
+      x-show="confirmerQuitter"
+      class="absolute inset-0 z-50 flex items-center justify-center px-8"
+      style="background:rgba(0,0,0,0.7);"
+    >
+      <div class="w-full rounded-2xl p-6 flex flex-col gap-4" style="background:#0D0D3B;border:1px solid rgba(100,80,255,0.5);">
+        <p style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:16px;color:white;text-align:center;">
+          Quitter la team ?
+        </p>
+        <p style="font-family:'Josefin Sans',sans-serif;font-size:13px;color:rgba(255,255,255,0.6);text-align:center;">
+          Tu ne pourras plus accéder au chat et aux guerres de cette team.
+        </p>
+        <div class="flex gap-3">
+          <button
+            type="button"
+            @click="confirmerQuitter = false"
+            class="flex-1 rounded-xl py-2 active:opacity-70"
+            style="background:rgba(255,255,255,0.1);font-family:'Josefin Sans',sans-serif;font-size:14px;color:white;"
+          >Annuler</button>
+          <button
+            type="button"
+            @click="quitterTeam()"
+            :disabled="enCours"
+            class="flex-1 rounded-xl py-2 active:opacity-70 disabled:opacity-40"
+            style="background:#D22020;font-family:'Josefin Sans',sans-serif;font-size:14px;color:white;"
+          >Quitter</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('teamPage', () => ({
+      loading: true,
+      erreur: '',
+      team: { nom: '', blazonUrl: '', createur: '' },
+      membres: [] as any[],
+      ghostSrc: '',
+      confirmerQuitter: false,
+      enCours: false,
+      teamId: '',
+
+      async init() {
+        const el = document.querySelector('[data-team-id]') as HTMLElement;
+        this.teamId = el?.dataset.teamId ?? '';
+        this.ghostSrc = el?.dataset.ghost ?? '';
+
+        if (!this.teamId) { this.erreur = 'Team introuvable.'; this.loading = false; return; }
+
+        try {
+          // Charger la team SANS expand pour isoler l'erreur
+          console.log("Chargement team id:", this.teamId);
+          const team = await pb.collection('Teams').getOne(this.teamId, { requestKey: null });
+          console.log("Team :", team);
+
+          // Charger le blazon séparément si présent
+          let blazonUrl = '';
+          if ((team as any).blason) {
+            try {
+              const blazonRecord = await pb.collection('Avatars').getOne((team as any).blason, { requestKey: null });
+              blazonUrl = blazonRecord?.image_avatar ? pb.files.getURL(blazonRecord, blazonRecord.image_avatar) : '';
+            } catch (be: any) {
+              console.warn("Blazon non chargeable:", be?.message);
+            }
+          }
+
+          this.team = { nom: (team as any).nom_team ?? '', blazonUrl, createur: (team as any).createur ?? '' };
+        } catch (e: any) {
+          console.error("Erreur chargement team:", e, e?.data);
+          this.erreur = e?.message ?? 'Erreur de chargement.';
+          this.loading = false;
+          return;
+        }
+
+        try {
+          console.log("teamId utilisé :", this.teamId);
+          console.log("filtre membres :", `team="${this.teamId}"`);
+          const membres = await pb.collection('Utilisateurs').getFullList({
+            filter: `team = "${this.teamId}"`,
+            requestKey: null,
+          });
+          console.log("Membres récupérés :", membres);
+
+          if (membres.length === 0) {
+            console.warn("Aucun membre récupéré pour la team", this.teamId);
+          }
+
+          // Résoudre les avatars depuis Objets_boutique directement (un seul batch)
+          const avatarIds = [...new Set(membres.map((m: any) => m.avatar).filter(Boolean))] as string[];
+          const skinMap: Record<string, any> = {};
+          if (avatarIds.length > 0) {
+            try {
+              const skinFilter = avatarIds.map((id: string) => `id="${id}"`).join(' || ');
+              const skins = await pb.collection('Objets_boutique').getFullList({ filter: skinFilter, requestKey: null });
+              skins.forEach((s: any) => { skinMap[s.id] = s; });
+            } catch (se) {
+              console.warn("Impossible de charger les skins:", se);
+            }
+          }
+
+          // Membres dont l'avatar n'est pas résolu → chercher via Achats (dernier achat = avatar actif)
+          const membresSansAvatar = membres.filter((m: any) => !skinMap[m.avatar]);
+          if (membresSansAvatar.length > 0) {
+            try {
+              const memberIds = membresSansAvatar.map((m: any) => `utilisateur="${m.id}"`).join(' || ');
+              const achats = await pb.collection('Achats').getFullList({
+                filter: memberIds,
+                sort: '-created',
+                requestKey: null,
+              });
+              // Pour chaque membre, prendre son achat le plus récent
+              const achatParMembre: Record<string, string> = {};
+              achats.forEach((a: any) => {
+                if (a.utilisateur && a.objet && !achatParMembre[a.utilisateur]) {
+                  achatParMembre[a.utilisateur] = a.objet;
+                }
+              });
+              const objetIds = [...new Set(Object.values(achatParMembre))] as string[];
+              if (objetIds.length > 0) {
+                const objFilter = objetIds.map((id: string) => `id="${id}"`).join(' || ');
+                const objets = await pb.collection('Objets_boutique').getFullList({ filter: objFilter, requestKey: null });
+                objets.forEach((s: any) => { skinMap[s.id] = s; });
+                // Associer l'objet boutique à l'utilisateur (via achatParMembre)
+                membresSansAvatar.forEach((m: any) => {
+                  const objetId = achatParMembre[m.id];
+                  if (objetId && skinMap[objetId] && !skinMap[m.avatar]) {
+                    skinMap['membre_' + m.id] = skinMap[objetId];
+                  }
+                });
+              }
+            } catch {}
+          }
+
+          this.membres = membres.map((m: any) => {
+            let avatarUrl = '';
+            const skin = m.avatar ? skinMap[m.avatar] : null;
+            const fallbackSkin = skinMap['membre_' + m.id] ?? null;
+            const resolvedSkin = skin || fallbackSkin;
+            if (resolvedSkin?.image) avatarUrl = pb.files.getURL(resolvedSkin, resolvedSkin.image);
+            else if (resolvedSkin?.image_avatar) avatarUrl = pb.files.getURL(resolvedSkin, resolvedSkin.image_avatar);
+            return {
+              id: m.id,
+              pseudo: m.pseudo ?? m.id,
+              niveaux: m.niveaux || 1,
+              xp: m.xp || 0,
+              isChef: m.id === this.team.createur,
+              avatarUrl,
+            };
+          });
+
+          // Écraser l'avatar du membre connecté avec localStorage (source la plus fiable)
+          const myId = pb.authStore.model?.id;
+          if (myId) {
+            try {
+              const cached = JSON.parse(localStorage.getItem('gestu_avatar_' + myId) || 'null');
+              if (cached?.imageUrl) {
+                const me = this.membres.find((m: any) => m.id === myId);
+                if (me) me.avatarUrl = cached.imageUrl;
+              }
+            } catch {}
+          }
+        } catch (e: any) {
+          console.error("Erreur complète membres :", e);
+          console.error("e.status :", e?.status);
+          console.error("e.data :", JSON.stringify(e?.data, null, 2));
+          this.erreur = e?.message ?? 'Erreur de chargement des membres.';
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async quitterTeam() {
+        const userId = pb.authStore.model?.id;
+        if (!userId) return;
+        this.enCours = true;
+        try {
+          await pb.collection('Utilisateurs').update(userId, { team: null });
+          window.location.href = '/teams';
+        } catch (e: any) {
+          console.error('Erreur quitter team:', e);
+          this.enCours = false;
+          this.confirmerQuitter = false;
+        }
+      },
+
+      irAuChat() {
+        window.location.href = `/teams/${this.teamId}/chat`;
+      },
+    }));
+  });
+</script>

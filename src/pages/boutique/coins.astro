@@ -1,0 +1,178 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import BottomNav from '../../components/BottomNav.astro';
+import coinsIcon from '../../assets/icon/coins.svg';
+import retour from '../../assets/icon/icone_retour_acceuil.svg';
+import gestuCoins from '../../assets/icon/gestucoins_boutique.svg';
+---
+
+<Layout title="Gestu — Acheter des coins">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden"
+    style="background: linear-gradient(180deg, #0D0D3B 0%, #1a0a4a 100%);"
+    x-data="coinsBoutique()"
+    x-init="init()"
+  >
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-4 pt-4">
+      <div class="flex items-center gap-2">
+        <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
+        <span class="text-xl font-bold text-white" x-text="coins">—</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div
+          class="h-4 w-36 overflow-hidden rounded-full bg-white/20"
+          role="progressbar"
+          aria-label="Points d'expérience"
+          :aria-valuenow="xp"
+          :aria-valuemax="xpMax"
+          aria-valuemin="0"
+        >
+          <div class="h-full rounded-full bg-purple-400 transition-all" :style="`width: ${xpPercent}%`"></div>
+        </div>
+        <a href="/boutique" aria-label="Retour à la boutique">
+          <img src={retour.src} alt="" class="h-9 w-9" />
+        </a>
+      </div>
+    </header>
+
+    <!-- Illustration coins -->
+    <div class="flex justify-center pt-4 pb-2">
+      <img src={gestuCoins.src} alt="Gestu Coins" class="h-28 w-auto object-contain drop-shadow-xl" />
+    </div>
+
+    <h1 class="text-center font-game text-sm text-white">GESTU COINS</h1>
+    <p class="mt-1 text-center text-xs text-white/50">Utilise tes coins pour débloquer des contenus</p>
+
+    <!-- Message feedback -->
+    <div
+      x-show="message"
+      x-transition
+      role="status"
+      aria-live="polite"
+      class="mx-4 mt-3 rounded-xl px-4 py-3 text-center text-sm font-bold text-white"
+      :class="messageType === 'error' ? 'bg-red-600/80' : 'bg-green-600/80'"
+      x-text="message"
+    ></div>
+
+    <!-- Chargement -->
+    <div x-show="loading" class="flex flex-1 items-center justify-center" aria-live="polite" aria-label="Chargement en cours">
+      <div class="h-10 w-10 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <!-- Packs de coins -->
+    <main x-show="!loading" class="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+      <div class="flex flex-col gap-3">
+
+        <template x-for="offre in offres" :key="offre.id">
+          <button
+            @click="acheter(offre)"
+            class="flex w-full items-center justify-between rounded-2xl p-4 transition-transform active:scale-95"
+            :style="offre.populaire ? 'background:linear-gradient(135deg,#7c3aed,#4f46e5);border:2px solid #a78bfa;' : 'background:rgba(255,255,255,0.05);border:1.5px solid rgba(124,58,237,0.4);'"
+            :aria-label="`Acheter ${offre.quantite} coins pour ${offre.prix}€`"
+          >
+            <div class="flex items-center gap-3">
+              <img src={coinsIcon.src} alt="" class="h-8 w-8 object-contain" />
+              <div class="text-left">
+                <p class="font-bold text-white" x-text="offre.quantite + ' coins'"></p>
+                <p x-show="offre.bonus" class="text-xs text-yellow-300" x-text="offre.bonus"></p>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <span
+                x-show="offre.populaire"
+                class="rounded-full bg-yellow-400/20 px-2 py-0.5 text-xs font-bold text-yellow-300"
+              >Populaire</span>
+              <span class="text-base font-bold text-white" x-text="offre.prix + ' €'"></span>
+            </div>
+          </button>
+        </template>
+
+      </div>
+
+      <p class="mt-6 text-center text-xs text-white/30">
+        Les achats sont simulés — aucune transaction réelle
+      </p>
+    </main>
+
+    <BottomNav active="boutique" />
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('coinsBoutique', () => ({
+      coins: 0,
+      xp: 0,
+      xpMax: 100,
+      xpPercent: 0,
+      loading: false,
+      offres: [] as any[],
+      message: '',
+      messageType: 'success' as 'success' | 'error',
+      _msgTimer: null as ReturnType<typeof setTimeout> | null,
+
+      async init() {
+        if (!pb.authStore.isValid) { window.location.href = '/login'; return; }
+        const userId = String(pb.authStore.model?.id ?? '');
+        if (!userId) { window.location.href = '/login'; return; }
+
+        try {
+          const user = await pb.collection('Utilisateurs').getOne(userId, { requestKey: null });
+          this.coins = user?.coins ?? 0;
+          this.xp = user?.xp ?? 0;
+          this.xpMax = (user?.niveaux ?? 1) * 50 + 50;
+          this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        } catch {
+          this.coins = pb.authStore.model?.coins ?? 0;
+        }
+
+        try {
+          const records = await pb.collection('Offres_coins').getFullList({ sort: 'prix', requestKey: null });
+          this.offres = records.map((r: any) => ({
+            id: r.id,
+            quantite: r.quantite ?? 100,
+            prix: r.prix ?? 0.99,
+            bonus: r.bonus ?? '',
+            populaire: r.populaire ?? false,
+          }));
+        } catch {
+          this.offres = [
+            { id: '1', quantite: 100,  prix: '0,99',  bonus: '',           populaire: false },
+            { id: '2', quantite: 300,  prix: '2,49',  bonus: '+50 bonus',  populaire: true  },
+            { id: '3', quantite: 700,  prix: '4,99',  bonus: '+150 bonus', populaire: false },
+            { id: '4', quantite: 1500, prix: '9,99',  bonus: '+500 bonus', populaire: false },
+          ];
+        }
+      },
+
+      async acheter(offre: any) {
+        const newCoins = this.coins + offre.quantite;
+        this.coins = newCoins;
+        this.showMessage(`+${offre.quantite} coins ajoutés !`, 'success');
+        if (pb.authStore.isValid) {
+          const userId = String(pb.authStore.model?.id ?? '');
+          if (userId) {
+            try {
+              await pb.collection('Utilisateurs').update(userId, { coins: newCoins }, { requestKey: null });
+              pb.authStore.save(pb.authStore.token, pb.authStore.model!);
+            } catch (e) {
+              console.warn('Impossible de sauvegarder les coins:', e);
+            }
+          }
+        }
+      },
+
+      showMessage(msg: string, type: 'success' | 'error') {
+        this.message = msg;
+        this.messageType = type;
+        if (this._msgTimer) clearTimeout(this._msgTimer);
+        this._msgTimer = setTimeout(() => { this.message = ''; }, 2500);
+      },
+    }));
+  });
+</script>

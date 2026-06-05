@@ -1,11 +1,42 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import fond from '../assets/img/fond_acceuil.avif';
+import logo from '../assets/img/logo_acceuil.avif';
+import appuyer from '../assets/img/appuyerpourjouer.avif';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// TODO: remplacer /home par la route réelle après authentification
+const nextRoute = '/home';
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Gestu">
+  <!-- Toute la page est cliquable pour entrer dans l'application -->
+  <a
+    href={nextRoute}
+    aria-label="Entrer dans l'application Gestu"
+    class="relative flex h-screen w-full cursor-pointer select-none flex-col items-center justify-between overflow-hidden py-16"
+  >
+    <!-- Fond plein écran -->
+    <img
+      src={fond.src}
+      alt=""
+      class="absolute inset-0 h-full w-full object-cover"
+      fetchpriority="high"
+    />
+
+    <!-- Logo + Monstre (centré, tiers supérieur) -->
+    <div class="relative z-10 flex flex-1 items-center justify-center">
+      <img
+        src={logo.src}
+        alt="Gestu"
+        class="w-4/5 max-w-xs"
+      />
+    </div>
+
+    <!-- "Appuyez pour jouer" (bas de l'écran) -->
+    <img
+      src={appuyer.src}
+      alt="Appuyez pour jouer"
+      class="relative z-10 w-1/2 max-w-45"
+    />
+  </a>
 </Layout>

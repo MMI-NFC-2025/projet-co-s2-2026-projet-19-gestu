@@ -1,0 +1,387 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import ghostPlaceholder from '../../../assets/icon/gestu_ghost.svg';
+import fondchat from '../../../assets/img/fondchat.avif';
+import parlerchatSvg from '../../../assets/icon/parlerchat.svg';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+---
+
+<Layout title="Gestu — Chat Team">
+  <div
+    class="relative h-screen w-full overflow-hidden select-none flex flex-col"
+    style="background: linear-gradient(180deg, #4C84FF 0%, #0036AB 100%);"
+    data-team-id={id}
+    data-ghost={ghostPlaceholder.src}
+    data-parlerchat={parlerchatSvg.src}
+    x-data="chatPage()"
+    x-init="init()"
+  >
+
+    <!-- Fond décoratif triangle -->
+    <img
+      src={fondchat.src}
+      class="absolute inset-0 w-full h-full pointer-events-none"
+      style="object-fit:cover;z-index:0;"
+      alt=""
+    />
+
+    <!-- Chargement -->
+    <div x-show="loading" class="absolute inset-0 z-10 flex items-center justify-center">
+      <div class="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-transparent"></div>
+    </div>
+
+    <!-- Zone messages -->
+    <div
+      x-show="!loading"
+      x-ref="messagesContainer"
+      class="relative z-10 flex-1 overflow-y-auto px-4 pt-6 pb-2 flex flex-col gap-3"
+    >
+
+      <template x-for="msg in messages" :key="msg.id">
+        <div>
+
+          <!-- Bandeau système -->
+          <template x-if="msg.type === 'system'">
+            <div
+              class="w-full flex items-center justify-center px-4 py-2 rounded-[9px] my-1"
+              style="background:#110B7E;"
+            >
+              <span
+                x-text="msg.message"
+                style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:14px;color:white;text-align:center;"
+              ></span>
+            </div>
+          </template>
+
+          <!-- Bulle blanche — autre utilisateur (gauche) -->
+          <template x-if="msg.type === 'message' && msg.auteurId !== currentUserId">
+            <div class="flex flex-col items-start gap-1" style="max-width:75%;">
+              <div
+                class="px-3 py-2 rounded-[9px]"
+                style="background:#FFFFFF;border:1.5px solid #3208D2;"
+              >
+                <span
+                  x-text="msg.message"
+                  style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:14px;color:#0D0D3B;word-break:break-word;"
+                ></span>
+              </div>
+              <div class="flex items-center gap-1 pl-1">
+                <img :src="msg.auteurAvatarUrl || ghostSrc" class="w-5 h-5 rounded-full object-contain" alt="" />
+                <span
+                  x-text="msg.auteurPseudo"
+                  style="font-family:'Josefin Sans',sans-serif;font-size:11px;color:white;"
+                ></span>
+              </div>
+            </div>
+          </template>
+
+          <!-- Bulle bleue — utilisateur connecté (droite) -->
+          <template x-if="msg.type === 'message' && msg.auteurId === currentUserId">
+            <div class="flex flex-col items-end gap-1 ml-auto" style="max-width:75%;">
+              <div
+                class="px-3 py-2 rounded-[9px]"
+                style="background:#0000FE;border:1.5px solid #110A7E;"
+              >
+                <span
+                  x-text="msg.message"
+                  style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:14px;color:white;word-break:break-word;"
+                ></span>
+              </div>
+              <div class="flex items-center gap-1 justify-end pr-1">
+                <span
+                  x-text="msg.auteurPseudo"
+                  style="font-family:'Josefin Sans',sans-serif;font-size:11px;color:white;"
+                ></span>
+                <img :src="msg.auteurAvatarUrl || ghostSrc" class="w-5 h-5 rounded-full object-contain" alt="" />
+              </div>
+            </div>
+          </template>
+
+        </div>
+      </template>
+
+      <!-- Aucun message -->
+      <p
+        x-show="messages.length === 0"
+        class="text-center py-8"
+        style="font-family:'Josefin Sans',sans-serif;color:rgba(255,255,255,0.5);font-size:13px;"
+      >
+        Aucun message pour l'instant
+      </p>
+
+    </div>
+
+    <!-- Zone de saisie -->
+    <div
+      x-show="!loading"
+      class="relative z-10 flex items-center gap-3 px-4 pb-8 pt-2"
+    >
+
+      <!-- Bouton retour -->
+      <button
+        type="button"
+        @click="retour()"
+        class="active:opacity-60 flex-shrink-0"
+        aria-label="Retour"
+      >
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M23 8 L13 18 L23 28" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <!-- parlerchat : SVG de fond + input superposé -->
+      <div class="relative flex-1" style="height:72px;">
+        <img :src="parlerchatSrc" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;" />
+        <input
+          x-model="newMessage"
+          @keydown.enter="sendMessage()"
+          type="text"
+          placeholder="Parler avec la team"
+          style="position:absolute;left:5%;right:28%;top:50%;transform:translateY(-50%);background:transparent;border:none;outline:none;font-family:'Josefin Sans',sans-serif;font-size:13px;color:#0D0D3B;width:67%;"
+        />
+        <button
+          type="button"
+          @click="sendMessage()"
+          :disabled="!newMessage.trim() || enCours"
+          style="position:absolute;right:0;top:0;width:28%;height:100%;background:transparent;"
+          class="active:opacity-60 disabled:opacity-40"
+          aria-label="Envoyer"
+        ></button>
+      </div>
+
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('chatPage', () => ({
+      loading: true,
+      messages: [] as any[],
+      newMessage: '',
+      enCours: false,
+      teamId: '',
+      currentUserId: '',
+      ghostSrc: '',
+      parlerchatSrc: '',
+      _unsub: null as any,
+      _skinMap: {} as Record<string, any>,
+
+      async init() {
+        const el = document.querySelector('[data-team-id]') as HTMLElement;
+        this.teamId = el?.dataset.teamId ?? '';
+        this.ghostSrc = el?.dataset.ghost ?? '';
+        this.parlerchatSrc = el?.dataset.parlerchat ?? '';
+        this.currentUserId = pb.authStore.model?.id ?? '';
+
+        if (!this.teamId) { this.loading = false; return; }
+
+        await this.chargerMessages();
+        setTimeout(() => this.scrollBas(), 0);
+
+        // Abonnement temps réel
+        try {
+          this._unsub = await pb.collection('Messages_team').subscribe('*', async (e: any) => {
+            if (e.action !== 'create' || e.record.team !== this.teamId) return;
+            if (this.messages.find((m: any) => m.id === e.record.id)) return;
+            try {
+              const msg = await pb.collection('Messages_team').getOne(e.record.id, {
+                expand: 'auteur',
+                requestKey: null,
+              });
+              // Charger le skin de l'auteur si pas déjà en cache
+              const auteurUser = msg.expand?.auteur;
+              if (auteurUser) {
+                const avatarId = auteurUser.avatar;
+                const fallbackKey = 'user_' + auteurUser.id;
+                if (avatarId && !this._skinMap[avatarId] && !this._skinMap[fallbackKey]) {
+                  try {
+                    const skin = await pb.collection('Objets_boutique').getOne(avatarId, { requestKey: null });
+                    this._skinMap[skin.id] = skin;
+                  } catch {
+                    // Fallback via Achats
+                    try {
+                      const achats = await pb.collection('Achats').getFullList({
+                        filter: `utilisateur="${auteurUser.id}"`,
+                        sort: '-created',
+                        requestKey: null,
+                      });
+                      if (achats[0]?.objet) {
+                        const skin2 = await pb.collection('Objets_boutique').getOne(achats[0].objet, { requestKey: null });
+                        this._skinMap[fallbackKey] = skin2;
+                      }
+                    } catch {}
+                  }
+                }
+              }
+              const formatted = this.formatMessage(msg);
+              // Override avatar du joueur connecté avec localStorage
+              const myId2 = pb.authStore.model?.id;
+              if (myId2 && formatted.auteurId === myId2) {
+                try {
+                  const c = JSON.parse(localStorage.getItem('gestu_avatar_' + myId2) || 'null');
+                  if (c?.imageUrl) formatted.auteurAvatarUrl = c.imageUrl;
+                } catch {}
+              }
+              this.messages.push(formatted);
+              setTimeout(() => this.scrollBas(), 0);
+            } catch {}
+          });
+        } catch {
+          console.warn('Realtime indisponible');
+        }
+      },
+
+      async chargerMessages() {
+        try {
+          const msgs = await pb.collection('Messages_team').getFullList({
+            filter: `team = "${this.teamId}"`,
+            expand: 'auteur',
+            sort: 'created',
+            requestKey: null,
+          });
+
+          // Collecter tous les IDs avatar des auteurs, puis batch fetch Objets_boutique
+          const auteurUsers = msgs.map((m: any) => m.expand?.auteur).filter(Boolean);
+          const avatarIds = [...new Set(auteurUsers.map((u: any) => u.avatar).filter(Boolean))] as string[];
+          if (avatarIds.length > 0) {
+            try {
+              const filter = avatarIds.map((id: string) => `id="${id}"`).join(' || ');
+              const skins = await pb.collection('Objets_boutique').getFullList({ filter, requestKey: null });
+              skins.forEach((s: any) => { this._skinMap[s.id] = s; });
+            } catch {}
+          }
+
+          // Fallback : membres dont l'avatar n'est pas dans Objets_boutique → dernier Achat
+          const auteursSansAvatar = auteurUsers.filter((u: any) => !this._skinMap[u.avatar]);
+          if (auteursSansAvatar.length > 0) {
+            try {
+              const filter2 = auteursSansAvatar.map((u: any) => `utilisateur="${u.id}"`).join(' || ');
+              const achats = await pb.collection('Achats').getFullList({ filter: filter2, sort: '-created', requestKey: null });
+              const achatParUser: Record<string, string> = {};
+              achats.forEach((a: any) => {
+                if (a.utilisateur && a.objet && !achatParUser[a.utilisateur]) achatParUser[a.utilisateur] = a.objet;
+              });
+              const objetIds = [...new Set(Object.values(achatParUser))] as string[];
+              if (objetIds.length > 0) {
+                const filter3 = objetIds.map((id: string) => `id="${id}"`).join(' || ');
+                const objets = await pb.collection('Objets_boutique').getFullList({ filter: filter3, requestKey: null });
+                objets.forEach((s: any) => { this._skinMap[s.id] = s; });
+                auteursSansAvatar.forEach((u: any) => {
+                  const id = achatParUser[u.id];
+                  if (id) this._skinMap['user_' + u.id] = this._skinMap[id];
+                });
+              }
+            } catch {}
+          }
+
+          this.messages = msgs.map((m: any) => this.formatMessage(m));
+
+          // Écraser l'avatar du joueur connecté avec localStorage
+          const myId = pb.authStore.model?.id;
+          if (myId) {
+            try {
+              const cached = JSON.parse(localStorage.getItem('gestu_avatar_' + myId) || 'null');
+              if (cached?.imageUrl) {
+                this._skinMap['__me__'] = { __directUrl: cached.imageUrl };
+                this.messages = this.messages.map((m: any) =>
+                  m.auteurId === myId ? { ...m, auteurAvatarUrl: cached.imageUrl } : m
+                );
+              }
+            } catch {}
+          }
+        } catch (e) {
+          console.error('Erreur chargement messages:', e);
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      getAvatarUrl(auteur: any) {
+        const avatarId = auteur?.avatar;
+        const skin = (avatarId && this._skinMap[avatarId]) ? this._skinMap[avatarId]
+                   : (auteur?.id ? this._skinMap['user_' + auteur.id] : null);
+        if (!skin) return '';
+        const f = skin.image || skin.image_avatar;
+        return f ? pb.files.getURL(skin, f) : '';
+      },
+
+      formatMessage(m: any) {
+        const auteur = m.expand?.auteur;
+        return {
+          id: m.id,
+          type: m.type ?? 'message',
+          message: m.message ?? '',
+          auteurId: m.auteur ?? '',
+          auteurPseudo: auteur?.pseudo ?? '',
+          auteurAvatarUrl: this.getAvatarUrl(auteur),
+        };
+      },
+
+      async sendMessage() {
+        const texte = this.newMessage.trim();
+        if (!texte || this.enCours) return;
+        this.newMessage = '';
+        this.enCours = true;
+        try {
+          const created = await pb.collection('Messages_team').create({
+            message: texte,
+            team: this.teamId,
+            auteur: this.currentUserId,
+            type: 'message',
+          }, { requestKey: null });
+
+          // Ajouter localement (le realtime dédupliquera si nécessaire)
+          if (!this.messages.find((m: any) => m.id === created.id)) {
+            let myAvatarUrl = '';
+            try {
+              const c = JSON.parse(localStorage.getItem('gestu_avatar_' + this.currentUserId) || 'null');
+              if (c?.imageUrl) myAvatarUrl = c.imageUrl;
+            } catch {}
+            try {
+              const msg = await pb.collection('Messages_team').getOne(created.id, {
+                expand: 'auteur',
+                requestKey: null,
+              });
+              const formatted = this.formatMessage(msg);
+              if (myAvatarUrl) formatted.auteurAvatarUrl = myAvatarUrl;
+              this.messages.push(formatted);
+            } catch {
+              const me = pb.authStore.model;
+              this.messages.push({
+                id: created.id,
+                type: 'message',
+                message: texte,
+                auteurId: this.currentUserId,
+                auteurPseudo: me?.pseudo ?? '',
+                auteurAvatarUrl: myAvatarUrl,
+              });
+            }
+            setTimeout(() => this.scrollBas(), 0);
+          }
+        } catch (e) {
+          console.error('Erreur envoi:', e);
+          this.newMessage = texte;
+        } finally {
+          this.enCours = false;
+        }
+      },
+
+      scrollBas() {
+        const container = document.querySelector('[x-ref="messagesContainer"]') as HTMLElement | null;
+        if (container) container.scrollTop = container.scrollHeight;
+      },
+
+      retour() {
+        try { pb.collection('Messages_team').unsubscribe(); } catch {}
+        window.location.href = `/teams/${this.teamId}`;
+      },
+    }));
+  });
+</script>

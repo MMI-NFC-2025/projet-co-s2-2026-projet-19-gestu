@@ -1,0 +1,424 @@
+---
+import Layout from '../layouts/Layout.astro';
+import retour from '../assets/icon/fleche_retour.svg';
+import ghostDefault from '../assets/icon/ghost_acceuil.svg';
+import coinsIcon from '../assets/icon/coins.svg';
+import gameboy from '../assets/icon/gameboy_gestughost.svg';
+import fondAchat from '../assets/img/gestughostachat.avif';
+---
+
+<Layout title="Gestu — Personnalisation">
+  <div
+    class="relative flex h-screen w-full flex-col overflow-hidden select-none"
+    style="background: #5B8CFF;"
+    x-data="personnalisationData()"
+    x-init="init()"
+    data-ghost-default={ghostDefault.src}
+    data-fond-achat={fondAchat.src}
+  >
+
+    <!-- ══ CHARGEMENT ══ -->
+    <div x-show="loading" class="flex h-full items-center justify-center">
+      <div class="h-12 w-12 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+    </div>
+
+    <div x-show="!loading" class="flex h-full flex-col">
+
+      <!-- Header -->
+      <header class="shrink-0 flex items-center justify-between px-4 pt-4">
+        <div class="flex items-center gap-2">
+          <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
+          <span class="text-xl font-bold text-white" x-text="coins">—</span>
+        </div>
+        <p class="font-game text-xs text-white" style="text-shadow: 0 0 12px #7C3AED;">MON GHOST</p>
+        <a href="/dashboard" aria-label="Retour au tableau de bord">
+          <img src={retour.src} alt="" class="h-8 w-8 object-contain opacity-80 hover:opacity-100 transition-opacity" />
+        </a>
+      </header>
+
+      <!-- Game Boy + carousel -->
+      <main class="flex flex-1 flex-col items-center justify-center px-4 pb-4 pt-2">
+        <div class="relative w-full max-w-72">
+
+          <!-- Image Game Boy -->
+          <img src={gameboy.src} alt="Gameboy" class="w-full object-contain select-none pointer-events-none" />
+
+          <!-- Ghost dans l'écran de la Game Boy -->
+          <div
+            class="absolute flex items-center justify-center"
+            style="top: 13%; left: 50%; transform: translateX(-50%); width: 42%; height: 36%;"
+          >
+            <img
+              :src="selectedAvatar?.imageUrl || defaultGhost"
+              :alt="selectedAvatar?.nom || 'Ghost'"
+              class="w-full h-full object-contain drop-shadow-lg"
+              @click="selectedAvatar && !isOwned(selectedAvatar) && ouvrirAchat()"
+              :style="selectedAvatar && !isOwned(selectedAvatar) ? 'cursor:pointer;' : ''"
+            />
+          </div>
+
+          <!-- Bandeau info en haut de la Game Boy -->
+          <div
+            class="absolute flex items-center justify-between px-3 py-1.5"
+            style="top: 5%; left: 11%; right: 11%; border-radius: 8px; background: linear-gradient(135deg, #1a1a6e, #0d0d3b); border: 1.5px solid #4B4BFF;"
+          >
+            <span class="text-sm font-bold leading-tight text-white truncate" x-text="selectedAvatar?.nom || '...'"></span>
+            <template x-if="selectedAvatar && !isOwned(selectedAvatar)">
+              <span class="ml-2 whitespace-nowrap text-sm font-black text-white" x-text="(selectedAvatar?.prix || 0) + ' coins'"></span>
+            </template>
+            <template x-if="selectedAvatar && isOwned(selectedAvatar)">
+              <span class="ml-2 whitespace-nowrap text-sm font-bold text-green-400">✓ Possédé</span>
+            </template>
+          </div>
+
+          <!-- Bouton gauche : x=40-100, y=368-405 sur SVG 430×778 -->
+          <button
+            @click="prevAvatar()"
+            class="absolute transition-transform active:scale-90"
+            style="top: 47.3%; left: 9.3%; width: 14%; height: 4.8%; background: transparent;"
+            aria-label="Avatar précédent"
+          ></button>
+
+          <!-- Bouton droit : x=330-390, y=368-405 sur SVG 430×778 -->
+          <button
+            @click="nextAvatar()"
+            class="absolute transition-transform active:scale-90"
+            style="top: 47.3%; left: 76.7%; width: 14%; height: 4.8%; background: transparent;"
+            aria-label="Avatar suivant"
+          ></button>
+
+        </div>
+
+        <!-- Bouton d'action sous la Game Boy -->
+        <div class="mt-3 flex w-full max-w-72 justify-center">
+          <template x-if="selectedAvatar && isOwned(selectedAvatar)">
+            <button
+              @click="selectionnerAvatar()"
+              class="w-full rounded-xl py-2 text-sm font-bold text-white transition-transform active:scale-95"
+              style="background: linear-gradient(135deg, #2563eb, #1d4ed8);"
+            >Sélectionner cet avatar</button>
+          </template>
+          <template x-if="selectedAvatar && !isOwned(selectedAvatar)">
+            <button
+              @click="ouvrirAchat()"
+              class="w-full rounded-xl py-2 text-sm font-bold text-white transition-transform active:scale-95"
+              style="background: linear-gradient(135deg, #7c3aed, #4f46e5);"
+              x-text="'Acheter pour ' + (selectedAvatar?.prix || 0) + ' coins'"
+            ></button>
+          </template>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- ══ ÉCRAN D'ACHAT (plein écran, par-dessus tout) ══ -->
+    <div
+      x-show="showPurchaseScreen && selectedAvatar"
+      x-transition:enter="transition duration-200"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      class="absolute inset-0 z-40 flex flex-col items-center justify-between"
+      style="background: #5B0FD4;"
+    >
+      <!-- Fond gestughostachat plein écran -->
+      <img
+        :src="fondAchatSrc"
+        alt="Achat ghost"
+        class="absolute inset-0 h-full w-full object-cover pointer-events-none"
+      />
+
+      <!-- Ghost centré au milieu de l'écran d'achat -->
+      <div class="relative z-10 flex flex-1 items-center justify-center">
+        <img
+          :src="selectedAvatar?.imageUrl || defaultGhost"
+          :alt="selectedAvatar?.nom || 'Ghost'"
+          class="h-48 w-48 object-contain drop-shadow-2xl"
+          style="filter: drop-shadow(0 0 32px rgba(255,255,255,0.4));"
+        />
+      </div>
+
+      <!-- Bouton acheter en bas -->
+      <div class="relative z-10 flex w-full flex-col items-center gap-3 pb-16 px-8">
+        <button
+          @click="acheterAvatar()"
+          class="w-full rounded-2xl py-4 text-base font-bold text-white transition-transform active:scale-95"
+          style="background: #7C3AED; border: 2px solid rgba(255,255,255,0.5);"
+          x-text="'Acheter pour ' + (selectedAvatar?.prix || 0) + ' coins'"
+        ></button>
+        <button
+          @click="showPurchaseScreen = false"
+          class="text-sm text-white/60 underline"
+        >Retour</button>
+      </div>
+    </div>
+
+    <!-- Message feedback -->
+    <div
+      x-show="message"
+      x-transition
+      role="status"
+      aria-live="polite"
+      class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-xl px-6 py-3 text-center text-sm font-bold text-white"
+      :class="messageType === 'error' ? 'bg-red-600' : 'bg-green-600'"
+      x-text="message"
+    ></div>
+  </div>
+</Layout>
+
+<script>
+  import pb from '../lib/pocketbase.js';
+
+  (window as any).Alpine.data('personnalisationData', () => ({
+    loading: true,
+    coins: 0,
+    xp: 0,
+    xpMax: 100,
+    xpPercent: 0,
+    avatars: [] as any[],
+    ownedAvatarIds: [] as string[],
+    selectedIndex: 0,
+    selectedAvatar: null as any,
+    activeAvatarId: '',
+    showPurchaseScreen: false,
+    defaultGhost: '',
+    fondAchatSrc: '',
+    message: '',
+    messageType: 'success' as 'success' | 'error',
+    _msgTimer: null as ReturnType<typeof setTimeout> | null,
+    userRecord: null as any,
+
+    async init() {
+      this.defaultGhost = (document.querySelector('[data-ghost-default]') as HTMLElement)?.dataset.ghostDefault ?? '';
+      this.fondAchatSrc = (document.querySelector('[data-fond-achat]') as HTMLElement)?.dataset.fondAchat ?? '';
+
+      if (!pb.authStore.isValid) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const userId = pb.authStore.model?.id;
+      if (!userId) {
+        window.location.href = '/login';
+        return;
+      }
+
+      try {
+        this.userRecord = await pb.collection('Utilisateurs').getOne(userId, {
+          expand: 'avatar',
+          requestKey: null,
+        });
+
+        const user = this.userRecord;
+        console.log("Avatar actif :", user.avatar);
+
+        this.coins = user?.coins ?? 0;
+        this.xp = user?.xp ?? 0;
+        this.xpMax = (user?.niveaux ?? 1) * 50 + 50;
+        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        this.activeAvatarId = user?.avatar ?? '';
+
+        const records = await pb.collection('Objets_boutique').getFullList({
+          sort: 'nom_objet',
+          requestKey: null,
+        });
+
+        this.avatars = records
+          .filter((r: any) => {
+            const t = String(r.type_objet ?? '').toLowerCase();
+            return t === '' || t === 'avatar' || t === 'skin';
+          })
+          .map((r: any) => ({
+            id: r.id,
+            nom: r.nom_objet ?? r.nom ?? 'Ghost',
+            imageUrl: this.getImageUrl(r),
+            prix: Number(r.prix ?? 0),
+            raw: r,
+          }));
+
+        console.log("Avatars boutique :", this.avatars);
+
+        const owned = new Set<string>(Array.isArray(user?.avatars_possedes) ? user.avatars_possedes : []);
+        try {
+          const achats = await pb.collection('Achats').getFullList({
+            filter: `utilisateur = "${user.id}"`,
+            requestKey: null,
+          });
+          achats.forEach((a: any) => {
+            const objetId = a.objet || a.avatar || a.objet_boutique;
+            if (objetId) owned.add(objetId);
+          });
+        } catch {
+          // La collection Achats peut ne pas être disponible selon l'environnement.
+        }
+
+        if (this.activeAvatarId) owned.add(this.activeAvatarId);
+
+        // Aussi vérifier le localStorage (persistance locale fiable)
+        try {
+          const cached = JSON.parse(localStorage.getItem('gestu_avatar_' + userId) || 'null');
+          if (cached?.id) {
+            owned.add(cached.id);
+            if (!this.activeAvatarId) this.activeAvatarId = cached.id;
+          }
+        } catch {}
+
+        this.ownedAvatarIds = Array.from(owned);
+
+        const preferred = this.avatars.findIndex((a: any) => a.id === this.activeAvatarId);
+        this.selectedIndex = preferred >= 0 ? preferred : 0;
+        this.selectedAvatar = this.avatars[this.selectedIndex] ?? null;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    getImageUrl(record: any) {
+      const imageField = record?.image || record?.image_avatar || record?.avatar;
+      if (!imageField) return '';
+      return pb.files.getURL(record, imageField) + `?t=${record?.updated ?? ''}`;
+    },
+
+    isOwned(avatar: any) {
+      const isOwned = this.ownedAvatarIds.includes(avatar?.id);
+      console.log("Avatar possédé :", isOwned);
+      return isOwned;
+    },
+
+    prevAvatar() {
+      if (this.avatars.length === 0) return;
+      this.showPurchaseScreen = false;
+      this.selectedIndex = (this.selectedIndex - 1 + this.avatars.length) % this.avatars.length;
+      this.selectedAvatar = this.avatars[this.selectedIndex];
+    },
+
+    nextAvatar() {
+      if (this.avatars.length === 0) return;
+      this.showPurchaseScreen = false;
+      this.selectedIndex = (this.selectedIndex + 1) % this.avatars.length;
+      this.selectedAvatar = this.avatars[this.selectedIndex];
+    },
+
+    ouvrirAchat() {
+      if (!this.selectedAvatar) return;
+      this.showPurchaseScreen = true;
+    },
+
+    async acheterAvatar() {
+      if (!this.selectedAvatar || !this.userRecord) return;
+      const selectedAvatar = this.selectedAvatar;
+      console.log("Avatar sélectionné :", selectedAvatar);
+
+      // 1. Enregistrer l'achat dans Achats (si possible, non bloquant)
+      try {
+        await pb.collection('Achats').create({
+          utilisateur: this.userRecord.id,
+          objet: selectedAvatar.id,
+          date_achat: new Date().toISOString(),
+        }, { requestKey: null });
+      } catch (e: any) {
+        console.warn("Achats.create ignoré :", e?.message ?? e);
+      }
+
+      // 2. Mettre à jour la possession locale
+      const uniqueOwned = Array.from(new Set([...(this.ownedAvatarIds || []), selectedAvatar.id]));
+      this.ownedAvatarIds = uniqueOwned;
+
+      // 3. Mettre à jour Utilisateurs — on tente plusieurs payload, sans bloquer si échec
+      const payloadCandidates = [
+        { avatar: selectedAvatar.id, avatars_possedes: uniqueOwned },
+        { avatar: selectedAvatar.id },
+        { avatar_boutique: selectedAvatar.id },
+        { avatar_actif: selectedAvatar.id },
+      ];
+
+      let updated: any = null;
+      for (const payload of payloadCandidates) {
+        try {
+          updated = await pb.collection('Utilisateurs').update(this.userRecord.id, payload, { requestKey: null });
+          console.log("Utilisateurs mis à jour avec :", payload);
+          break;
+        } catch (e: any) {
+          console.warn("Essai payload avatar échoué :", payload, e?.message ?? e);
+        }
+      }
+
+      if (updated) {
+        this.userRecord = updated;
+        if (pb.authStore.model) {
+          try {
+            pb.authStore.save(pb.authStore.token, { ...pb.authStore.model, avatar: selectedAvatar.id });
+          } catch {}
+        }
+      }
+
+      this.activeAvatarId = selectedAvatar.id;
+
+      // Persistance locale fiable (indépendante du schéma PocketBase)
+      try {
+        const userId2 = this.userRecord?.id || pb.authStore.model?.id;
+        if (userId2) {
+          localStorage.setItem('gestu_avatar_' + userId2, JSON.stringify({ id: selectedAvatar.id, imageUrl: selectedAvatar.imageUrl }));
+        }
+      } catch {}
+
+      this.showPurchaseScreen = false;
+      this.showMessage(`Ghost "${selectedAvatar.nom}" acheté et sélectionné !`, 'success');
+    },
+
+    async selectionnerAvatar() {
+      if (!this.selectedAvatar || !this.userRecord) return;
+      const selectedAvatar = this.selectedAvatar;
+      console.log("Avatar sélectionné :", selectedAvatar);
+
+      if (!this.isOwned(selectedAvatar)) {
+        this.ouvrirAchat();
+        return;
+      }
+
+      const payloadCandidates = [
+        { avatar: selectedAvatar.id },
+        { avatar_boutique: selectedAvatar.id },
+        { avatar_actif: selectedAvatar.id },
+      ];
+
+      let updated: any = null;
+      for (const payload of payloadCandidates) {
+        try {
+          updated = await pb.collection('Utilisateurs').update(this.userRecord.id, payload, { requestKey: null });
+          console.log("Avatar actif mis à jour :", payload);
+          break;
+        } catch (e: any) {
+          console.warn("Essai sélection avatar échoué :", payload, e?.message ?? e);
+        }
+      }
+
+      if (updated) {
+        this.userRecord = updated;
+        if (pb.authStore.model) {
+          try {
+            pb.authStore.save(pb.authStore.token, { ...pb.authStore.model, avatar: selectedAvatar.id });
+          } catch {}
+        }
+      }
+
+      this.activeAvatarId = selectedAvatar.id;
+
+      // Persistance locale fiable
+      try {
+        const userId2 = this.userRecord?.id || pb.authStore.model?.id;
+        if (userId2) {
+          localStorage.setItem('gestu_avatar_' + userId2, JSON.stringify({ id: selectedAvatar.id, imageUrl: selectedAvatar.imageUrl }));
+        }
+      } catch {}
+
+      this.showMessage(`Ghost "${selectedAvatar.nom}" sélectionné !`, 'success');
+    },
+
+    showMessage(msg: string, type: 'success' | 'error') {
+      this.message = msg;
+      this.messageType = type;
+      if (this._msgTimer) clearTimeout(this._msgTimer);
+      this._msgTimer = setTimeout(() => { this.message = ''; }, 2000);
+    },
+  }));
+</script>

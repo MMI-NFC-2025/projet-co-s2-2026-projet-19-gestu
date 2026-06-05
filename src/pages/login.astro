@@ -1,0 +1,115 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ghost from '../assets/icon/ghostcreationcompte.svg';
+import logo from '../assets/icon/logo_typographique.svg';
+import btnConnecter from '../assets/icon/se_connecter.svg';
+---
+
+<Layout title="Gestu — Se connecter">
+  <div
+    class="relative flex min-h-screen w-full flex-col overflow-y-auto"
+    style="background: radial-gradient(circle at 50% 50%, #4343BA 6%, #1F1F8F 29%, #0D0D3B 83%);"
+    x-data="loginForm()"
+  >
+
+    <!-- Barre supérieure : pastilles + ghost -->
+    <div class="relative flex items-start justify-center px-4 pt-6">
+      <div class="flex items-center gap-2 pt-1" role="progressbar" aria-label="Étape 5 sur 5" aria-valuenow={5} aria-valuemin={1} aria-valuemax={5}>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/40" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/60" aria-hidden="true"></span>
+        <span class="block h-2.5 w-2.5 rounded-full bg-white/70" aria-hidden="true"></span>
+        <span class="block h-3.5 w-3.5 rounded-full bg-white" aria-hidden="true"></span>
+      </div>
+      <img src={ghost.src} alt="" class="absolute right-4 top-0 h-20 w-20 object-contain" />
+    </div>
+
+    <!-- Formulaire de connexion -->
+    <div class="flex flex-1 flex-col justify-center px-8">
+
+      <!-- Message d'erreur -->
+      <div
+        x-show="erreur"
+        x-text="erreur"
+        role="alert"
+        aria-live="assertive"
+        class="mb-4 rounded-lg bg-red-500/20 px-4 py-2 text-center text-sm text-red-300"
+      ></div>
+
+      <!-- Champ Email -->
+      <label for="login-email" class="mb-1 font-bold text-white text-lg">Adresse mail</label>
+      <input
+        id="login-email"
+        type="email"
+        x-model="pseudo"
+        placeholder="ton@email.com"
+        class="mb-6 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
+        autocomplete="email"
+      />
+
+      <!-- Champ Mot de passe -->
+      <label for="login-password" class="mb-1 font-bold text-white text-lg">Mot de passe</label>
+      <input
+        id="login-password"
+        type="password"
+        x-model="motdepasse"
+        placeholder="••••••••"
+        class="mb-10 w-full rounded-md border-2 border-blue-600 bg-white px-4 py-3 text-black outline-none focus:border-blue-400"
+        autocomplete="current-password"
+      />
+
+      <!-- Bouton Se connecter -->
+      <div class="flex justify-center">
+        <button
+          @click="seConnecter()"
+          :disabled="chargement"
+          class="w-64 transition-transform active:scale-95 disabled:opacity-60"
+        >
+          <img x-show="!chargement" src={btnConnecter.src} alt="Se connecter" class="w-full" />
+          <span x-show="chargement" class="block w-full rounded-xl bg-blue-700 py-4 text-center text-xl font-bold text-white">Connexion...</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Logo Gestu (bas gauche) -->
+    <div class="px-6 pb-6">
+      <img src={logo.src} alt="Gestu" class="h-10 object-contain" />
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import pb from '../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    (window as any).Alpine.data('loginForm', () => ({
+      pseudo: '',
+      motdepasse: '',
+      erreur: '',
+      chargement: false,
+
+      async seConnecter() {
+        this.erreur = '';
+        if (!this.pseudo || !this.motdepasse) {
+          this.erreur = 'Remplis tous les champs.';
+          return;
+        }
+        this.chargement = true;
+        try {
+          // TODO: PocketBase — connexion via pseudo (usernameOrEmail)
+          // Active "Allow username authentication" dans PocketBase > Utilisateurs > Auth settings
+          await pb.collection('Utilisateurs').authWithPassword(this.pseudo, this.motdepasse);
+          // TODO: remplacer /dashboard par la vraie route de l'app
+          window.location.href = '/dashboard';
+        } catch (e: any) {
+          const err = e;
+          console.error('Login error:', JSON.stringify(err?.response || err));
+          this.erreur = err?.response?.message || err?.message || 'Pseudo ou mot de passe incorrect.';
+        } finally {
+          this.chargement = false;
+        }
+      }
+    }));
+  });
+</script>
