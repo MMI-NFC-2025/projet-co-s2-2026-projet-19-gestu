@@ -1,6 +1,10 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import ghostPlaceholder from '../../assets/icon/gestu_ghost.svg';
+import chatTeamSvg from '../../assets/icon/chatteam.svg';
+import retourAccueilSvg from '../../assets/icon/icone_retour_acceuil.svg';
+
+export const prerender = false;
 
 const { id } = Astro.params;
 ---
@@ -35,65 +39,23 @@ const { id } = Astro.params;
         style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:52px;color:white;line-height:1;"
       ></h1>
 
-      <!-- Bannière team (blazon + déco) -->
-      <div
-        class="relative flex items-center overflow-hidden rounded-xl"
-        style="height:53px;background:linear-gradient(135deg,#3208D2 0%,#1C0086 60%,#4B1EF5 100%);border:2px solid #0000FE;"
-      >
-        <!-- Blazon -->
-        <div class="flex items-center justify-center shrink-0 ml-3" style="width:38px;height:38px;background:rgba(0,0,0,0.3);border-radius:6px;border:1px solid rgba(255,255,255,0.25);">
-          <img :src="team.blazonUrl || ghostSrc" class="w-full h-full object-contain p-1" alt="Blazon" />
-        </div>
-        <!-- Cercle déco centre -->
-        <div class="flex-1 flex justify-center">
-          <div style="width:32px;height:32px;background:rgba(100,50,200,0.5);border-radius:50%;border:2px solid rgba(255,255,255,0.2);"></div>
-        </div>
-        <!-- Badge droite -->
-        <div class="flex items-center justify-center mr-3 shrink-0" style="width:32px;height:32px;background:#0050FF;border-radius:6px;border:2px solid rgba(255,255,255,0.5);transform:rotate(45deg);">
-          <span style="transform:rotate(-45deg);font-family:'Press Start 2P',monospace;font-size:7px;color:white;" x-text="membres.length"></span>
-        </div>
-      </div>
-
       <!-- Liste membres (joueurteamgroupe) -->
       <div class="flex flex-col gap-2 flex-1 overflow-y-auto">
         <template x-for="(membre, index) in membres" :key="membre.id">
-          <div
-            class="relative overflow-hidden rounded-xl"
-            style="height:53px;flex-shrink:0;border:2px solid #0000FE;"
-          >
-            <!-- Fond blanc gauche + violet droit (diagonal) -->
-            <div class="absolute inset-0" style="background:white;"></div>
-            <div class="absolute inset-0" style="background:linear-gradient(135deg,#3208D2 0%,#1C0086 100%);clip-path:polygon(55% 0%, 100% 0%, 100% 100%, 35% 100%);"></div>
-
-            <!-- Contenu -->
-            <div class="relative flex items-center h-full px-2 gap-2">
-              <!-- Rang -->
-              <div
-                class="flex items-center justify-center shrink-0"
-                style="width:30px;height:30px;background:#0000FE;border-radius:4px;"
-              >
+          <div class="relative" style="height:53px;flex-shrink:0;">
+            <img src="/joueurteamgroupe.svg" class="absolute inset-0 w-full h-full" style="object-fit:fill;" alt="" />
+            <div class="absolute inset-0 flex items-center">
+              <div class="flex items-center justify-center" style="position:absolute;left:3%;width:13%;">
                 <span x-text="index + 1" style="font-family:'Press Start 2P',monospace;font-size:9px;color:white;"></span>
               </div>
-
-              <!-- Pseudo + rôle -->
-              <div class="flex flex-col min-w-0" style="width:80px;">
-                <span x-text="membre.pseudo" style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:14px;color:#0D0D3B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+              <div class="flex flex-col" style="position:absolute;left:17%;width:26%;overflow:hidden;">
+                <span x-text="membre.pseudo" style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:13px;color:#0D0D3B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
                 <span x-text="membre.isChef ? 'Chef' : 'Membre'" style="font-family:'Josefin Sans',sans-serif;font-size:10px;color:#3208D2;"></span>
               </div>
-
-              <!-- Avatar -->
-              <div class="shrink-0 overflow-hidden" style="width:30px;height:30px;border-radius:50%;border:2px solid white;">
+              <div class="overflow-hidden" style="position:absolute;left:40%;width:11%;aspect-ratio:1;border-radius:50%;border:2px solid white;">
                 <img :src="membre.avatarUrl || ghostSrc" class="w-full h-full object-contain" alt="" />
               </div>
-
-              <!-- Spacer -->
-              <div class="flex-1"></div>
-
-              <!-- Niveau -->
-              <div
-                class="flex items-center justify-center shrink-0 mr-1"
-                style="width:34px;height:34px;background:#0050FF;border-radius:50%;border:2px solid white;"
-              >
+              <div class="flex items-center justify-center" style="position:absolute;right:2%;width:9%;">
                 <span x-text="membre.niveaux" style="font-family:'Press Start 2P',monospace;font-size:8px;color:white;"></span>
               </div>
             </div>
@@ -117,46 +79,49 @@ const { id } = Astro.params;
       x-show="!loading"
       class="absolute bottom-6 left-0 right-0 flex justify-center gap-4"
     >
-      <!-- Retour teams -->
-      <a
-        href="/teams"
-        class="flex items-center justify-center rounded-xl transition-opacity active:opacity-60"
-        style="width:62px;height:62px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);"
-        aria-label="Retour aux teams"
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 14L4 9l5-5"/>
-          <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
-        </svg>
+      <button type="button" @click="confirmerQuitter = true" class="active:opacity-60 transition-opacity" aria-label="Quitter la team">
+        <img src="/retourteams.svg" alt="Quitter" style="width:62px;height:62px;object-fit:contain;" />
+      </button>
+      <button type="button" class="active:opacity-60 transition-opacity" aria-label="Guerres">
+        <img src="/guerreteam.svg" alt="Guerres" style="width:62px;height:62px;object-fit:contain;" />
+      </button>
+      <button type="button" @click="irAuChat()" class="active:opacity-60 transition-opacity" aria-label="Chat">
+        <img src={chatTeamSvg.src} alt="Chat" style="width:62px;height:62px;object-fit:contain;" />
+      </button>
+      <a href="/dashboard" class="active:opacity-60 transition-opacity" aria-label="Accueil">
+        <img src={retourAccueilSvg.src} alt="Accueil" style="width:62px;height:62px;object-fit:contain;" />
       </a>
+    </div>
 
-      <!-- Guerres (trophy) -->
-      <button
-        type="button"
-        class="flex items-center justify-center rounded-xl transition-opacity active:opacity-60"
-        style="width:62px;height:62px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);"
-        aria-label="Guerres"
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-          <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-          <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-        </svg>
-      </button>
-
-      <!-- Chat -->
-      <button
-        type="button"
-        class="flex items-center justify-center rounded-xl transition-opacity active:opacity-60"
-        style="width:62px;height:62px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);"
-        aria-label="Chat"
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          <circle cx="9" cy="10" r="1" fill="white"/><circle cx="12" cy="10" r="1" fill="white"/><circle cx="15" cy="10" r="1" fill="white"/>
-        </svg>
-      </button>
+    <!-- ══ CONFIRMATION QUITTER ══ -->
+    <div
+      x-show="confirmerQuitter"
+      class="absolute inset-0 z-50 flex items-center justify-center px-8"
+      style="background:rgba(0,0,0,0.7);"
+    >
+      <div class="w-full rounded-2xl p-6 flex flex-col gap-4" style="background:#0D0D3B;border:1px solid rgba(100,80,255,0.5);">
+        <p style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:16px;color:white;text-align:center;">
+          Quitter la team ?
+        </p>
+        <p style="font-family:'Josefin Sans',sans-serif;font-size:13px;color:rgba(255,255,255,0.6);text-align:center;">
+          Tu ne pourras plus accéder au chat et aux guerres de cette team.
+        </p>
+        <div class="flex gap-3">
+          <button
+            type="button"
+            @click="confirmerQuitter = false"
+            class="flex-1 rounded-xl py-2 active:opacity-70"
+            style="background:rgba(255,255,255,0.1);font-family:'Josefin Sans',sans-serif;font-size:14px;color:white;"
+          >Annuler</button>
+          <button
+            type="button"
+            @click="quitterTeam()"
+            :disabled="enCours"
+            class="flex-1 rounded-xl py-2 active:opacity-70 disabled:opacity-40"
+            style="background:#D22020;font-family:'Josefin Sans',sans-serif;font-size:14px;color:white;"
+          >Quitter</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -172,35 +137,54 @@ const { id } = Astro.params;
       team: { nom: '', blazonUrl: '', createur: '' },
       membres: [] as any[],
       ghostSrc: '',
+      confirmerQuitter: false,
+      enCours: false,
+      teamId: '',
 
       async init() {
         const el = document.querySelector('[data-team-id]') as HTMLElement;
-        const teamId = el?.dataset.teamId ?? '';
+        this.teamId = el?.dataset.teamId ?? '';
         this.ghostSrc = el?.dataset.ghost ?? '';
 
-        if (!teamId) { this.erreur = 'Team introuvable.'; this.loading = false; return; }
+        if (!this.teamId) { this.erreur = 'Team introuvable.'; this.loading = false; return; }
 
         try {
-          // Charger la team
-          const team = await pb.collection('Teams').getOne(teamId, {
-            expand: 'blason',
-            requestKey: null,
-          });
+          // Charger la team SANS expand pour isoler l'erreur
+          console.log("Chargement team id:", this.teamId);
+          const team = await pb.collection('Teams').getOne(this.teamId, { requestKey: null });
+          console.log("Team :", team);
 
-          const blazonRecord = (team as any).expand?.blason;
-          const blazonUrl = blazonRecord?.image_avatar
-            ? pb.files.getURL(blazonRecord, blazonRecord.image_avatar)
-            : '';
+          // Charger le blazon séparément si présent
+          let blazonUrl = '';
+          if ((team as any).blason) {
+            try {
+              const blazonRecord = await pb.collection('Avatars').getOne((team as any).blason, { requestKey: null });
+              blazonUrl = blazonRecord?.image_avatar ? pb.files.getURL(blazonRecord, blazonRecord.image_avatar) : '';
+            } catch (be: any) {
+              console.warn("Blazon non chargeable:", be?.message);
+            }
+          }
 
           this.team = { nom: (team as any).nom_team ?? '', blazonUrl, createur: (team as any).createur ?? '' };
+        } catch (e: any) {
+          console.error("Erreur chargement team:", e, e?.data);
+          this.erreur = e?.message ?? 'Erreur de chargement.';
+          this.loading = false;
+          return;
+        }
 
-          // Charger les membres (tri par niveau décroissant)
+        try {
+          console.log("teamId utilisé :", this.teamId);
+          console.log("filtre membres :", `team="${this.teamId}"`);
           const membres = await pb.collection('Utilisateurs').getFullList({
-            filter: `team = "${teamId}"`,
-            expand: 'avatar',
-            sort: '-niveaux,-xp',
+            filter: `team = "${this.teamId}"`,
             requestKey: null,
           });
+          console.log("Membres récupérés :", membres);
+
+          if (membres.length === 0) {
+            console.warn("Aucun membre récupéré pour la team", this.teamId);
+          }
 
           this.membres = membres.map((m: any) => {
             const avatarRecord = m.expand?.avatar;
@@ -216,10 +200,31 @@ const { id } = Astro.params;
             };
           });
         } catch (e: any) {
-          this.erreur = e?.message ?? 'Erreur de chargement.';
+          console.error("Erreur complète membres :", e);
+          console.error("e.status :", e?.status);
+          console.error("e.data :", JSON.stringify(e?.data, null, 2));
+          this.erreur = e?.message ?? 'Erreur de chargement des membres.';
         } finally {
           this.loading = false;
         }
+      },
+
+      async quitterTeam() {
+        const userId = pb.authStore.model?.id;
+        if (!userId) return;
+        this.enCours = true;
+        try {
+          await pb.collection('Utilisateurs').update(userId, { team: null });
+          window.location.href = '/teams';
+        } catch (e: any) {
+          console.error('Erreur quitter team:', e);
+          this.enCours = false;
+          this.confirmerQuitter = false;
+        }
+      },
+
+      irAuChat() {
+        window.location.href = `/teams/${this.teamId}/chat`;
       },
     }));
   });

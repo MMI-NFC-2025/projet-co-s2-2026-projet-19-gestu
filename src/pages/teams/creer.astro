@@ -78,26 +78,26 @@ import rectangle2 from '../../assets/icon/rectangle2.svg';
           <img src={boutonPublicPrive.src} alt="Public / Privé" style="width:176px;height:47px;display:block;" />
           <!-- Overlay sombre sur la moitié inactive -->
           <div
-            x-show="visibilite === 'prive'"
+            x-show="visibilite === 'privee'"
             class="absolute pointer-events-none rounded-l"
             style="top:3px;left:3px;width:76px;height:34px;background:rgba(0,0,0,0.35);border-radius:4px 0 0 4px;"
           ></div>
           <div
-            x-show="visibilite === 'public'"
+            x-show="visibilite === 'publique'"
             class="absolute pointer-events-none"
             style="top:3px;left:86px;width:69px;height:34px;background:rgba(0,0,0,0.35);border-radius:0 4px 4px 0;"
           ></div>
           <!-- Zones cliquables invisibles -->
           <button
             type="button"
-            @click="visibilite = 'public'"
+            @click="visibilite = 'publique'"
             class="absolute top-0 left-0 h-full"
             style="width:49%;background:transparent;"
             aria-label="Public"
           ></button>
           <button
             type="button"
-            @click="visibilite = 'prive'"
+            @click="visibilite = 'privee'"
             class="absolute top-0 h-full"
             style="left:49%;right:0;background:transparent;"
             aria-label="Privé"
@@ -207,7 +207,7 @@ import rectangle2 from '../../assets/icon/rectangle2.svg';
       blazonUrl: '',
       activeAvatarUrl: '',
       description: '',
-      visibilite: 'public' as 'public' | 'prive',
+      visibilite: 'publique' as 'publique' | 'privee',
       enCours: false,
       erreur: '',
       pickerOuvert: false,
@@ -274,13 +274,15 @@ import rectangle2 from '../../assets/icon/rectangle2.svg';
         }
         this.enCours = true;
         try {
-          const team = await pb.collection('Teams').create({
+          const payload = {
             nom_team: this.nom.trim(),
             blason: this.blazonId || null,
             visibilite: this.visibilite,
             createur: userId,
             description: this.description.trim(),
-          });
+          };
+          console.log(payload);
+          const team = await pb.collection('Teams').create(payload);
           await pb.collection('Utilisateurs').update(userId, { team: team.id });
           window.location.href = `/teams/${team.id}`;
         } catch (e: any) {

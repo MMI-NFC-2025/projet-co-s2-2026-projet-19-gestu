@@ -74,32 +74,89 @@ import boutonCreerTeam from '../assets/icon/boutoncréetateam.svg';
       </div>
     </div>
 
+    <!-- ══ OVERLAY fermeture ══ -->
+    <div
+      x-show="resultats.length > 0"
+      class="absolute inset-0 z-20"
+      @click="resultats = []"
+    ></div>
+
     <!-- ══ RÉSULTATS RECHERCHE ══ -->
     <div
       x-show="resultats.length > 0"
       x-transition:enter="transition ease-out duration-200"
       x-transition:enter-start="opacity-0 translate-y-2"
       x-transition:enter-end="opacity-100 translate-y-0"
-      class="absolute z-30 left-8 right-8 rounded-2xl overflow-hidden"
-      style="bottom: 220px; background: rgba(20,10,60,0.97); border: 1px solid rgba(100,80,255,0.4);"
+      class="absolute z-30 left-8 right-8 rounded-2xl overflow-y-auto"
+      style="bottom: 120px; max-height: 55vh; background: rgba(20,10,60,0.97); border: 1px solid rgba(100,80,255,0.4);"
     >
       <template x-for="team in resultats" :key="team.id">
-        <a
-          :href="`/teams/${team.id}`"
-          class="flex items-center gap-3 px-4 py-3 transition-colors active:bg-white/10"
+        <div
+          class="flex items-center gap-3 px-4 py-3"
           style="border-bottom: 1px solid rgba(255,255,255,0.06);"
         >
+          <!-- Initiale -->
           <span
             class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-bold text-sm"
             style="background: #3208D2;"
             x-text="(team.nom || '?')[0].toUpperCase()"
           ></span>
-          <div>
-            <p class="text-white text-sm font-bold" x-text="team.nom" style="font-family:'Josefin Sans',sans-serif;"></p>
-            <p class="text-white/50 text-xs" x-text="team.membres + ' membres'" style="font-family:'Josefin Sans',sans-serif;"></p>
+
+          <!-- Nom + membres -->
+          <div class="flex-1 min-w-0">
+            <p class="text-white text-sm font-bold truncate" x-text="team.nom" style="font-family:'Josefin Sans',sans-serif;"></p>
+            <p class="text-white/50 text-xs" x-text="team.membres + ' membre' + (team.membres > 1 ? 's' : '')" style="font-family:'Josefin Sans',sans-serif;"></p>
           </div>
-        </a>
+
+          <!-- Badge "Votre team" -->
+          <template x-if="team.id === userTeamId">
+            <a
+              :href="`/teams/${team.id}`"
+              class="shrink-0 flex items-center justify-center rounded-full px-3 py-1 active:opacity-70"
+              style="background:#3208D2;border:1px solid rgba(255,255,255,0.4);"
+            >
+              <span style="font-family:'Josefin Sans',sans-serif;font-size:11px;color:white;white-space:nowrap;">Votre team</span>
+            </a>
+          </template>
+
+          <!-- Bouton Rejoindre (pas de team) -->
+          <template x-if="team.id !== userTeamId && userTeamId === ''">
+            <button
+              type="button"
+              @click="rejoindre(team.id)"
+              :disabled="enCours"
+              class="shrink-0 flex items-center justify-center rounded-full px-3 py-1 active:opacity-70 disabled:opacity-40"
+              style="background:#0050FF;border:1px solid rgba(255,255,255,0.4);"
+            >
+              <span style="font-family:'Josefin Sans',sans-serif;font-size:11px;color:white;white-space:nowrap;">Rejoindre</span>
+            </button>
+          </template>
+
+          <!-- Bouton désactivé (déjà dans une autre team) -->
+          <template x-if="team.id !== userTeamId && userTeamId !== ''">
+            <button
+              type="button"
+              disabled
+              class="shrink-0 flex items-center justify-center rounded-full px-3 py-1 opacity-30 cursor-not-allowed"
+              style="background:#555;border:1px solid rgba(255,255,255,0.2);"
+              title="Quittez votre team actuelle avant d'en rejoindre une autre"
+            >
+              <span style="font-family:'Josefin Sans',sans-serif;font-size:11px;color:white;white-space:nowrap;">Rejoindre</span>
+            </button>
+          </template>
+        </div>
       </template>
+
+      <!-- Message quitter team -->
+      <div
+        x-show="userTeamId !== '' && resultats.some(t => t.id !== userTeamId)"
+        class="px-4 py-2"
+        style="background:rgba(255,200,0,0.08);border-top:1px solid rgba(255,200,0,0.15);"
+      >
+        <p style="font-family:'Josefin Sans',sans-serif;font-size:11px;color:rgba(255,220,80,0.85);text-align:center;">
+          Vous devez quitter votre team actuelle avant d'en rejoindre une autre.
+        </p>
+      </div>
     </div>
 
     <!-- ══ FLÈCHE RETOUR ══ -->
@@ -122,24 +179,63 @@ import boutonCreerTeam from '../assets/icon/boutoncréetateam.svg';
     (window as any).Alpine.data('teamsPage', () => ({
       recherche: '',
       resultats: [] as { id: string; nom: string; membres: number }[],
+      userTeamId: '',
+      userId: '',
+      enCours: false,
 
       async init() {
-        // TODO: charger les teams suggérées depuis PocketBase (collection Teams)
+        const user = pb.authStore.model;
+        if (user) {
+          this.userId = user.id;
+          this.userTeamId = (user as any).team ?? '';
+          console.log('Team du joueur connecté:', this.userTeamId);
+        }
       },
 
       async rechercherTeam() {
         const q = this.recherche.trim();
         if (!q) { this.resultats = []; return; }
         try {
-          // TODO: remplacer par vraie requête PocketBase
-          // const records = await pb.collection('Teams').getList(1, 5, {
-          //   filter: `nom ~ "${q}"`,
-          //   requestKey: null,
-          // });
-          // this.resultats = records.items.map(r => ({ id: r.id, nom: r.nom, membres: r.membres ?? 0 }));
+          const filter = `nom_team ~ "${q}" && visibilite = "publique"`;
+
+          const records = await pb.collection('Teams').getFullList({
+            filter,
+            requestKey: null,
+          });
+
+          console.log('Résultats de recherche:', records);
+
+          const teamsWithCounts = await Promise.all(
+            records.map(async (r: any) => {
+              try {
+                const res = await pb.collection('Utilisateurs').getList(1, 1, {
+                  filter: `team = "${r.id}"`,
+                  requestKey: null,
+                });
+                return { id: r.id, nom: r.nom_team ?? '', membres: res.totalItems };
+              } catch {
+                return { id: r.id, nom: r.nom_team ?? '', membres: 0 };
+              }
+            })
+          );
+
+          this.resultats = teamsWithCounts;
+        } catch (e: any) {
+          console.error('Erreur recherche teams:', e);
           this.resultats = [];
-        } catch {
-          this.resultats = [];
+        }
+      },
+
+      async rejoindre(teamId: string) {
+        console.log("Id de la team sélectionnée pour rejoindre:", teamId);
+        if (!this.userId) return;
+        this.enCours = true;
+        try {
+          await pb.collection('Utilisateurs').update(this.userId, { team: teamId });
+          window.location.href = `/teams/${teamId}`;
+        } catch (e: any) {
+          console.error('Erreur rejoindre:', e);
+          this.enCours = false;
         }
       },
     }));
