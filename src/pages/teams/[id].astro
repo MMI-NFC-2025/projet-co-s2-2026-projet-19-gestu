@@ -186,19 +186,80 @@ const { id } = Astro.params;
             console.warn("Aucun membre récupéré pour la team", this.teamId);
           }
 
+          // Résoudre les avatars depuis Objets_boutique directement (un seul batch)
+          const avatarIds = [...new Set(membres.map((m: any) => m.avatar).filter(Boolean))] as string[];
+          const skinMap: Record<string, any> = {};
+          if (avatarIds.length > 0) {
+            try {
+              const skinFilter = avatarIds.map((id: string) => `id="${id}"`).join(' || ');
+              const skins = await pb.collection('Objets_boutique').getFullList({ filter: skinFilter, requestKey: null });
+              skins.forEach((s: any) => { skinMap[s.id] = s; });
+            } catch (se) {
+              console.warn("Impossible de charger les skins:", se);
+            }
+          }
+
+          // Membres dont l'avatar n'est pas résolu → chercher via Achats (dernier achat = avatar actif)
+          const membresSansAvatar = membres.filter((m: any) => !skinMap[m.avatar]);
+          if (membresSansAvatar.length > 0) {
+            try {
+              const memberIds = membresSansAvatar.map((m: any) => `utilisateur="${m.id}"`).join(' || ');
+              const achats = await pb.collection('Achats').getFullList({
+                filter: memberIds,
+                sort: '-created',
+                requestKey: null,
+              });
+              // Pour chaque membre, prendre son achat le plus récent
+              const achatParMembre: Record<string, string> = {};
+              achats.forEach((a: any) => {
+                if (a.utilisateur && a.objet && !achatParMembre[a.utilisateur]) {
+                  achatParMembre[a.utilisateur] = a.objet;
+                }
+              });
+              const objetIds = [...new Set(Object.values(achatParMembre))] as string[];
+              if (objetIds.length > 0) {
+                const objFilter = objetIds.map((id: string) => `id="${id}"`).join(' || ');
+                const objets = await pb.collection('Objets_boutique').getFullList({ filter: objFilter, requestKey: null });
+                objets.forEach((s: any) => { skinMap[s.id] = s; });
+                // Associer l'objet boutique à l'utilisateur (via achatParMembre)
+                membresSansAvatar.forEach((m: any) => {
+                  const objetId = achatParMembre[m.id];
+                  if (objetId && skinMap[objetId] && !skinMap[m.avatar]) {
+                    skinMap['membre_' + m.id] = skinMap[objetId];
+                  }
+                });
+              }
+            } catch {}
+          }
+
           this.membres = membres.map((m: any) => {
-            const avatarRecord = m.expand?.avatar;
+            let avatarUrl = '';
+            const skin = m.avatar ? skinMap[m.avatar] : null;
+            const fallbackSkin = skinMap['membre_' + m.id] ?? null;
+            const resolvedSkin = skin || fallbackSkin;
+            if (resolvedSkin?.image) avatarUrl = pb.files.getURL(resolvedSkin, resolvedSkin.image);
+            else if (resolvedSkin?.image_avatar) avatarUrl = pb.files.getURL(resolvedSkin, resolvedSkin.image_avatar);
             return {
               id: m.id,
               pseudo: m.pseudo ?? m.id,
               niveaux: m.niveaux || 1,
               xp: m.xp || 0,
               isChef: m.id === this.team.createur,
-              avatarUrl: avatarRecord?.image_avatar
-                ? pb.files.getURL(avatarRecord, avatarRecord.image_avatar)
-                : '',
+              avatarUrl,
             };
           });
+
+          // Écraser l'avatar du membre connecté avec localStorage (source la plus fiable)
+          const myId = pb.authStore.model?.id;
+          if (myId) {
+            try {
+              const cached = JSON.parse(localStorage.getItem('gestu_avatar_' + myId) || 'null');
+              if (cached?.imageUrl) {
+                const me = this.membres.find((m: any) => m.id === myId);
+                if (me) me.avatarUrl = cached.imageUrl;
+              }
+            } catch {}
+          }
         } catch (e: any) {
           console.error("Erreur complète membres :", e);
           console.error("e.status :", e?.status);

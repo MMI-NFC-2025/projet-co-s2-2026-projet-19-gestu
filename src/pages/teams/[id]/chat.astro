@@ -171,6 +171,7 @@ const { id } = Astro.params;
       ghostSrc: '',
       parlerchatSrc: '',
       _unsub: null as any,
+      _skinMap: {} as Record<string, any>,
 
       async init() {
         const el = document.querySelector('[data-team-id]') as HTMLElement;
@@ -182,7 +183,7 @@ const { id } = Astro.params;
         if (!this.teamId) { this.loading = false; return; }
 
         await this.chargerMessages();
-        this.$nextTick(() => this.scrollBas());
+        setTimeout(() => this.scrollBas(), 0);
 
         // Abonnement temps réel
         try {
@@ -191,11 +192,45 @@ const { id } = Astro.params;
             if (this.messages.find((m: any) => m.id === e.record.id)) return;
             try {
               const msg = await pb.collection('Messages_team').getOne(e.record.id, {
-                expand: 'auteur.avatar',
+                expand: 'auteur',
                 requestKey: null,
               });
-              this.messages.push(this.formatMessage(msg));
-              this.$nextTick(() => this.scrollBas());
+              // Charger le skin de l'auteur si pas déjà en cache
+              const auteurUser = msg.expand?.auteur;
+              if (auteurUser) {
+                const avatarId = auteurUser.avatar;
+                const fallbackKey = 'user_' + auteurUser.id;
+                if (avatarId && !this._skinMap[avatarId] && !this._skinMap[fallbackKey]) {
+                  try {
+                    const skin = await pb.collection('Objets_boutique').getOne(avatarId, { requestKey: null });
+                    this._skinMap[skin.id] = skin;
+                  } catch {
+                    // Fallback via Achats
+                    try {
+                      const achats = await pb.collection('Achats').getFullList({
+                        filter: `utilisateur="${auteurUser.id}"`,
+                        sort: '-created',
+                        requestKey: null,
+                      });
+                      if (achats[0]?.objet) {
+                        const skin2 = await pb.collection('Objets_boutique').getOne(achats[0].objet, { requestKey: null });
+                        this._skinMap[fallbackKey] = skin2;
+                      }
+                    } catch {}
+                  }
+                }
+              }
+              const formatted = this.formatMessage(msg);
+              // Override avatar du joueur connecté avec localStorage
+              const myId2 = pb.authStore.model?.id;
+              if (myId2 && formatted.auteurId === myId2) {
+                try {
+                  const c = JSON.parse(localStorage.getItem('gestu_avatar_' + myId2) || 'null');
+                  if (c?.imageUrl) formatted.auteurAvatarUrl = c.imageUrl;
+                } catch {}
+              }
+              this.messages.push(formatted);
+              setTimeout(() => this.scrollBas(), 0);
             } catch {}
           });
         } catch {
@@ -207,11 +242,60 @@ const { id } = Astro.params;
         try {
           const msgs = await pb.collection('Messages_team').getFullList({
             filter: `team = "${this.teamId}"`,
-            expand: 'auteur.avatar',
+            expand: 'auteur',
             sort: 'created',
             requestKey: null,
           });
+
+          // Collecter tous les IDs avatar des auteurs, puis batch fetch Objets_boutique
+          const auteurUsers = msgs.map((m: any) => m.expand?.auteur).filter(Boolean);
+          const avatarIds = [...new Set(auteurUsers.map((u: any) => u.avatar).filter(Boolean))] as string[];
+          if (avatarIds.length > 0) {
+            try {
+              const filter = avatarIds.map((id: string) => `id="${id}"`).join(' || ');
+              const skins = await pb.collection('Objets_boutique').getFullList({ filter, requestKey: null });
+              skins.forEach((s: any) => { this._skinMap[s.id] = s; });
+            } catch {}
+          }
+
+          // Fallback : membres dont l'avatar n'est pas dans Objets_boutique → dernier Achat
+          const auteursSansAvatar = auteurUsers.filter((u: any) => !this._skinMap[u.avatar]);
+          if (auteursSansAvatar.length > 0) {
+            try {
+              const filter2 = auteursSansAvatar.map((u: any) => `utilisateur="${u.id}"`).join(' || ');
+              const achats = await pb.collection('Achats').getFullList({ filter: filter2, sort: '-created', requestKey: null });
+              const achatParUser: Record<string, string> = {};
+              achats.forEach((a: any) => {
+                if (a.utilisateur && a.objet && !achatParUser[a.utilisateur]) achatParUser[a.utilisateur] = a.objet;
+              });
+              const objetIds = [...new Set(Object.values(achatParUser))] as string[];
+              if (objetIds.length > 0) {
+                const filter3 = objetIds.map((id: string) => `id="${id}"`).join(' || ');
+                const objets = await pb.collection('Objets_boutique').getFullList({ filter: filter3, requestKey: null });
+                objets.forEach((s: any) => { this._skinMap[s.id] = s; });
+                auteursSansAvatar.forEach((u: any) => {
+                  const id = achatParUser[u.id];
+                  if (id) this._skinMap['user_' + u.id] = this._skinMap[id];
+                });
+              }
+            } catch {}
+          }
+
           this.messages = msgs.map((m: any) => this.formatMessage(m));
+
+          // Écraser l'avatar du joueur connecté avec localStorage
+          const myId = pb.authStore.model?.id;
+          if (myId) {
+            try {
+              const cached = JSON.parse(localStorage.getItem('gestu_avatar_' + myId) || 'null');
+              if (cached?.imageUrl) {
+                this._skinMap['__me__'] = { __directUrl: cached.imageUrl };
+                this.messages = this.messages.map((m: any) =>
+                  m.auteurId === myId ? { ...m, auteurAvatarUrl: cached.imageUrl } : m
+                );
+              }
+            } catch {}
+          }
         } catch (e) {
           console.error('Erreur chargement messages:', e);
         } finally {
@@ -219,18 +303,24 @@ const { id } = Astro.params;
         }
       },
 
+      getAvatarUrl(auteur: any) {
+        const avatarId = auteur?.avatar;
+        const skin = (avatarId && this._skinMap[avatarId]) ? this._skinMap[avatarId]
+                   : (auteur?.id ? this._skinMap['user_' + auteur.id] : null);
+        if (!skin) return '';
+        const f = skin.image || skin.image_avatar;
+        return f ? pb.files.getURL(skin, f) : '';
+      },
+
       formatMessage(m: any) {
         const auteur = m.expand?.auteur;
-        const avatarRecord = auteur?.expand?.avatar ?? m.expand?.['auteur.avatar'];
         return {
           id: m.id,
           type: m.type ?? 'message',
           message: m.message ?? '',
           auteurId: m.auteur ?? '',
           auteurPseudo: auteur?.pseudo ?? '',
-          auteurAvatarUrl: avatarRecord?.image_avatar
-            ? pb.files.getURL(avatarRecord, avatarRecord.image_avatar)
-            : '',
+          auteurAvatarUrl: this.getAvatarUrl(auteur),
         };
       },
 
@@ -249,12 +339,19 @@ const { id } = Astro.params;
 
           // Ajouter localement (le realtime dédupliquera si nécessaire)
           if (!this.messages.find((m: any) => m.id === created.id)) {
+            let myAvatarUrl = '';
+            try {
+              const c = JSON.parse(localStorage.getItem('gestu_avatar_' + this.currentUserId) || 'null');
+              if (c?.imageUrl) myAvatarUrl = c.imageUrl;
+            } catch {}
             try {
               const msg = await pb.collection('Messages_team').getOne(created.id, {
-                expand: 'auteur.avatar',
+                expand: 'auteur',
                 requestKey: null,
               });
-              this.messages.push(this.formatMessage(msg));
+              const formatted = this.formatMessage(msg);
+              if (myAvatarUrl) formatted.auteurAvatarUrl = myAvatarUrl;
+              this.messages.push(formatted);
             } catch {
               const me = pb.authStore.model;
               this.messages.push({
@@ -263,10 +360,10 @@ const { id } = Astro.params;
                 message: texte,
                 auteurId: this.currentUserId,
                 auteurPseudo: me?.pseudo ?? '',
-                auteurAvatarUrl: '',
+                auteurAvatarUrl: myAvatarUrl,
               });
             }
-            this.$nextTick(() => this.scrollBas());
+            setTimeout(() => this.scrollBas(), 0);
           }
         } catch (e) {
           console.error('Erreur envoi:', e);
@@ -277,7 +374,7 @@ const { id } = Astro.params;
       },
 
       scrollBas() {
-        const container = this.$refs.messagesContainer as HTMLElement;
+        const container = document.querySelector('[x-ref="messagesContainer"]') as HTMLElement | null;
         if (container) container.scrollTop = container.scrollHeight;
       },
 

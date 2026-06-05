@@ -13,6 +13,7 @@ import gameoverImg from '../../assets/img/gameover.avif';
     class="relative flex h-screen w-full flex-col overflow-hidden select-none"
     x-data="bossGame()"
     x-init="init()"
+    data-ghost-default={ghostIcon.src}
   >
 
     <!-- ══════════════ ÉCRAN DE JEU ══════════════ -->
@@ -84,23 +85,17 @@ import gameoverImg from '../../assets/img/gameover.avif';
           <button
             @click="repondre(i)"
             :disabled="reponduIndex !== null"
-            :aria-label="`Choisir la vidéo ${i + 1}`"
-            class="relative overflow-hidden rounded-2xl border-2 transition-all active:scale-95"
-            :class="reponduIndex === null
-              ? 'border-white/30'
-              : (i === question.bonneReponse
-                  ? 'border-green-400 ring-2 ring-green-400'
-                  : (reponduIndex === i ? 'border-red-400 ring-2 ring-red-400' : 'border-white/10 opacity-40'))
-            "
+            x-bind:aria-label="'Choisir la video ' + (i + 1)"
+            :class="choiceClass(i)"
             style="background: rgba(0,0,0,0.5);"
           >
             <video
               :src="choix.videoUrl"
               class="h-full w-full object-cover"
-              autoplay
-              loop
-              muted
-              playsinline
+              autoplay={true}
+              loop={true}
+              muted={true}
+              playsinline={true}
               preload="auto"
             ></video>
           </button>
@@ -114,7 +109,7 @@ import gameoverImg from '../../assets/img/gameover.avif';
         <div class="flex items-center gap-3">
           <div class="relative">
             <img
-              src={ghostIcon.src}
+              :src="playerAvatarUrl || defaultGhost"
               alt="Ton personnage"
               class="h-14 w-14 object-contain transition-transform duration-100"
               :class="degatVisible ? 'scale-75' : 'scale-100'"
@@ -244,9 +239,39 @@ import gameoverImg from '../../assets/img/gameover.avif';
       mauvaisesReponses: 0,
       degatVisible: false,
       degatBossVisible: false,
+      playerAvatarUrl: '',
+      defaultGhost: '',
 
       async init() {
         try {
+          this.defaultGhost = document.querySelector('[data-ghost-default]')?.getAttribute('data-ghost-default') || '';
+
+          if (pb.authStore.isValid) {
+            try {
+              const userId = String(pb.authStore.model?.id ?? '');
+              if (!userId) throw new Error('Utilisateur introuvable.');
+
+              // 1. Lire depuis localStorage en priorité
+              try {
+                const cached = JSON.parse(localStorage.getItem('gestu_avatar_' + userId) || 'null');
+                if (cached?.imageUrl) this.playerAvatarUrl = cached.imageUrl;
+              } catch {}
+
+              // 2. Sinon PocketBase
+              if (!this.playerAvatarUrl) {
+                const user = await pb.collection('Utilisateurs').getOne(userId, { requestKey: null });
+                const avatarId = user?.avatar;
+                if (avatarId) {
+                  const skin = await pb.collection('Objets_boutique').getOne(avatarId, { requestKey: null });
+                  const f = skin?.image || skin?.image_avatar;
+                  this.playerAvatarUrl = f ? pb.files.getURL(skin, f) : '';
+                }
+              }
+            } catch {
+              this.playerAvatarUrl = '';
+            }
+          }
+
           // Charger le boss ultime (premier de la liste)
           const bosses = await pb.collection('boss').getFullList({
             requestKey: null,
@@ -307,6 +332,14 @@ import gameoverImg from '../../assets/img/gameover.avif';
           bonneReponse: choix.findIndex((c: any) => c.correct),
         };
         this.reponduIndex = null;
+      },
+
+      choiceClass(i: number) {
+        const base = 'relative overflow-hidden rounded-2xl border-2 transition-all active:scale-95';
+        if (this.reponduIndex === null) return `${base} border-white/30`;
+        if (i === this.question.bonneReponse) return `${base} border-green-400 ring-2 ring-green-400`;
+        if (this.reponduIndex === i) return `${base} border-red-400 ring-2 ring-red-400`;
+        return `${base} border-white/10 opacity-40`;
       },
 
       async repondre(index: number) {
