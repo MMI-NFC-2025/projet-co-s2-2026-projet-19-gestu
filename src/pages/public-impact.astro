@@ -1,0 +1,299 @@
+---
+const publics = [
+  {
+    title: 'Professionnels de santé',
+    text: 'Aides-soignants, infirmiers, pharmaciens ou personnels d’accueil peuvent utiliser GESTU pour comprendre rapidement des situations essentielles.',
+  },
+  {
+    title: 'Proches et aidants',
+    text: 'Familles, amis et aidants peuvent apprendre les signes utiles pour mieux communiquer au quotidien avec une personne sourde.',
+  },
+  {
+    title: 'Métiers d’accueil',
+    text: 'Agents d’accueil, vendeurs ou services publics peuvent fluidifier les échanges et éviter des situations inconfortables.',
+  },
+];
+
+const impacts = [
+  {
+    title: 'Inclusion',
+    text: 'GESTU facilite l’accès aux premiers signes et sensibilise à la communication avec les personnes sourdes.',
+  },
+  {
+    title: 'Apprentissage court',
+    text: 'Les sessions rapides permettent de progresser petit à petit sans imposer une formation longue.',
+  },
+  {
+    title: 'Éco-conception',
+    text: 'La landing page reste légère, statique et sans base de données, afin de limiter les ressources nécessaires.',
+  },
+];
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GESTU - Publics et impact</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #08005f;
+        color: white;
+        font-family: Arial, sans-serif;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(8, 0, 95, 0.95);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .nav {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .logo {
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 0.15em;
+        color: #a5f3fc;
+      }
+
+      .button {
+        display: inline-block;
+        border-radius: 18px;
+        padding: 14px 24px;
+        font-weight: 900;
+        text-transform: uppercase;
+        font-size: 14px;
+        background: white;
+        color: #1500e8;
+      }
+
+      .section {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 80px 24px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 48px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        color: #a5f3fc;
+        font-size: 13px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+      }
+
+      h1 {
+        margin: 24px 0 0;
+        font-size: clamp(42px, 7vw, 72px);
+        line-height: 1.05;
+      }
+
+      h2 {
+        margin: 24px 0 0;
+        font-size: clamp(32px, 5vw, 48px);
+        line-height: 1.1;
+      }
+
+      h3 {
+        margin: 0;
+        font-size: 26px;
+      }
+
+      .cyan {
+        color: #a5f3fc;
+      }
+
+      .lead {
+        margin-top: 28px;
+        max-width: 760px;
+        font-size: 22px;
+        line-height: 1.6;
+        color: #dbeafe;
+      }
+
+      .label {
+        display: inline-block;
+        background: #4e1dff;
+        border: 2px solid #a5f3fc;
+        border-radius: 18px;
+        padding: 16px 28px;
+        font-size: 14px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-top: 36px;
+      }
+
+      .card-white {
+        background: white;
+        color: #1a1a5e;
+        border: 4px solid #1500e8;
+        border-radius: 28px;
+        padding: 24px;
+      }
+
+      .card-white h3 {
+        color: #1500e8;
+      }
+
+      .card-blue {
+        border: 1px solid #67e8f9;
+        background: #0a0756;
+        border-radius: 28px;
+        padding: 24px;
+      }
+
+      .image-box {
+        border: 1px solid rgba(165, 243, 252, 0.4);
+        background: #0a0756;
+        border-radius: 32px;
+        padding: 24px;
+      }
+
+      .image-box img {
+        width: 100%;
+        height: 420px;
+        object-fit: contain;
+        background: white;
+        border: 4px solid white;
+        border-radius: 24px;
+      }
+
+      .footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 40px 24px;
+        text-align: center;
+        color: #dbeafe;
+      }
+
+      @media (max-width: 900px) {
+        .hero-grid,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="header">
+      <nav class="nav" aria-label="Navigation principale">
+        <a href="/landing" class="logo">GESTU</a>
+        <a href="/landing" class="button">Retour</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">04 Publics & 05 Impact</p>
+
+            <h1>
+              Une application pensée pour les situations réelles,
+              <span class="cyan">avec un impact responsable.</span>
+            </h1>
+
+            <p class="lead">
+              GESTU vise les personnes qui ont besoin de communiquer rapidement avec des personnes sourdes,
+              sans formation préalable en LSF.
+            </p>
+          </div>
+
+          <div class="image-box">
+            <img src="/assets/phone-home.png" alt="Écran de l’application GESTU" />
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="label">04 Publics ciblés</p>
+
+        <h2>
+          Des profils différents, mais un même besoin :
+          <span class="cyan">comprendre vite et mieux communiquer.</span>
+        </h2>
+
+        <div class="grid-3">
+          {publics.map((item) => (
+            <article class="card-white">
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="label">05 Impact & éco-conception</p>
+
+        <h2>Un projet accessible, utile et pensé pour rester léger.</h2>
+
+        <div class="grid-3">
+          {impacts.map((item) => (
+            <article class="card-blue">
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="card-blue">
+          <h2>Retourner à la landing page principale</h2>
+
+          <p class="lead">
+            La page principale présente le concept, les mini-jeux, les fonctionnalités et le formulaire de contact.
+          </p>
+
+          <a href="/landing" class="button">Retour à la landing</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 2026 GESTU — Publics ciblés, impact et éco-conception.</p>
+    </footer>
+  </body>
+</html>
