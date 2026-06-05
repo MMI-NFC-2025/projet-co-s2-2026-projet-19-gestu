@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import retour from '../../assets/icon/fleche_retour.svg';
+import coeur from '../../assets/icon/coeur.svg';
 import fond from '../../assets/img/fond_jeu_tap.avif';
 import arcade from '../../assets/img/arcade_jeu_tap.avif';
 import degatImg from '../../assets/img/degat.avif';
@@ -36,11 +37,14 @@ import gameoverImg from '../../assets/img/gameover.avif';
       <div class="shrink-0 flex items-center justify-between px-4 pt-3 pb-1">
         <div class="flex gap-1" role="status" :aria-label="`${vies} vies restantes`">
           <template x-for="i in viesMax" :key="i">
-            <span
-              class="text-base transition-all duration-300"
-              :class="i <= vies ? 'opacity-100 scale-100' : 'opacity-15 scale-75'"
+            <img
+              src={coeur.src}
+              alt=""
               aria-hidden="true"
-            >❤️</span>
+              class="transition-all duration-300"
+              :class="i <= vies ? 'opacity-100 scale-100' : 'opacity-20 scale-75'"
+              style="width:22px;height:22px;object-fit:contain;"
+            />
           </template>
         </div>
         <span
@@ -75,6 +79,15 @@ import gameoverImg from '../../assets/img/gameover.avif';
               playsinline
               preload="auto"
             ></video>
+            <!-- Cadre feedback réponse -->
+            <div
+              class="absolute inset-0 pointer-events-none transition-all duration-300"
+              :style="feedbackColor === 'green'
+                ? 'border: 4px solid #22c55e; box-shadow: inset 0 0 16px rgba(34,197,94,0.5); border-radius: 4px;'
+                : feedbackColor === 'red'
+                ? 'border: 4px solid #ef4444; box-shadow: inset 0 0 16px rgba(239,68,68,0.5); border-radius: 4px;'
+                : 'border: 4px solid transparent; border-radius: 4px;'"
+            ></div>
           </div>
 
           <!-- Mots sortant des trous (rangée 3 + rangée 2) -->
@@ -177,6 +190,27 @@ import gameoverImg from '../../assets/img/gameover.avif';
         class="absolute inset-0 flex flex-col justify-end pb-12 px-8"
         style="background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%);"
       >
+        <!-- Animation XP (victoire seulement) -->
+        <div x-show="victoire" class="flex flex-col items-center mb-4 gap-2">
+          <div
+            x-show="xpGained > 0"
+            x-transition:enter="transition ease-out duration-500"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            style="font-family:'Press Start 2P',monospace;font-size:14px;color:#FFD700;text-shadow:0 0 12px rgba(255,215,0,0.8);"
+            x-text="`+${xpGained} XP`"
+          ></div>
+          <div
+            x-show="leveledUp"
+            x-transition:enter="transition ease-out duration-600"
+            x-transition:enter-start="opacity-0 scale-50"
+            x-transition:enter-end="opacity-100 scale-100"
+            class="px-4 py-2 rounded-full"
+            style="background:linear-gradient(135deg,#FFD700,#FF8C00);font-family:'Press Start 2P',monospace;font-size:10px;color:white;"
+            x-text="`NIVEAU ${newLevel} !`"
+          ></div>
+        </div>
+
         <div class="flex flex-col gap-3 w-full">
           <button
             @click="recommencer()"
@@ -214,11 +248,15 @@ import gameoverImg from '../../assets/img/gameover.avif';
 
 <script>
   import pb from '../../lib/pocketbase.js';
+  import { gainXP } from '../../lib/xp.js';
 
   document.addEventListener('alpine:init', () => {
     (window as any).Alpine.data('tapGame', () => ({
       phase: 'chargement' as 'chargement' | 'jeu' | 'fin' | 'erreur',
       erreur: '',
+      xpGained: 0,
+      leveledUp: false,
+      newLevel: 1,
       signes: [] as any[],
       currentSign: null as any,
       manche: 0,
@@ -229,6 +267,7 @@ import gameoverImg from '../../assets/img/gameover.avif';
       victoire: false,
       repondu: false,
       flash: '',
+      feedbackColor: '' as '' | 'green' | 'red',
       degatVisible: false,
       degatPos: { x: 0, y: 0 },
       // 6 trous — mutés directement pour la réactivité Alpine
@@ -281,17 +320,38 @@ import gameoverImg from '../../assets/img/gameover.avif';
       },
 
       // Passe au signe suivant (nouvelle vidéo)
-      nouvelleSigne() {
+      async nouvelleSigne() {
         if (this.vies <= 0)                   { this.victoire = false; this.phase = 'fin'; return; }
-        if (this.manche >= this.totalManches) { this.victoire = true;  this.phase = 'fin'; return; }
+        if (this.manche >= this.totalManches) {
+          this.victoire = true;
+          this.phase = 'fin';
+          try {
+            const r = await gainXP(20);
+            this.xpGained = r.xpGain;
+            this.leveledUp = r.leveledUp;
+            this.newLevel = r.newLevel;
+          } catch {}
+          return;
+        }
 
         this.manche++;
-        this.currentSign = this.signes[Math.floor(Math.random() * this.signes.length)];
 
-        // Charge et lance la vidéo une seule fois par signe
+        // Évite de rejouer le même signe deux fois de suite
+        const pool = this.signes.length > 1
+          ? this.signes.filter((s: any) => s.mot !== this.currentSign?.mot)
+          : this.signes;
+        this.currentSign = pool[Math.floor(Math.random() * pool.length)];
+
+        // Change la vidéo (force le rechargement même si même URL)
         this.$nextTick(() => {
           const v = this.$refs.videoEl as HTMLVideoElement;
-          if (v) { v.src = this.currentSign.videoUrl; v.load(); v.play().catch(() => {}); }
+          if (v) {
+            v.pause();
+            v.removeAttribute('src');
+            v.src = this.currentSign.videoUrl;
+            v.load();
+            v.play().catch(() => {});
+          }
         });
 
         this.lancerMots();
@@ -357,30 +417,39 @@ import gameoverImg from '../../assets/img/gameover.avif';
         // Pas de timeout — le joueur peut prendre son temps
       },
 
-      taper(index: number, event?: MouseEvent | TouchEvent) {
+      taper(index: number, event?: Event) {
         const trou = this.trous[index];
         if (!trou.visible || trou.tapped) return;
         trou.tapped = true;
 
-        // Effet dégât à la position du clic
-        if (event) {
-          const clientX = event instanceof TouchEvent ? event.touches[0]?.clientX ?? (event as any).clientX : (event as MouseEvent).clientX;
-          const clientY = event instanceof TouchEvent ? event.touches[0]?.clientY ?? (event as any).clientY : (event as MouseEvent).clientY;
-          this.degatPos = { x: clientX, y: clientY };
-          this.degatVisible = true;
-          this._timers.push(setTimeout(() => { this.degatVisible = false; }, 500));
-        }
+        // Effet dégât à la position du clic/touch (duck-typing pour éviter instanceof TouchEvent)
+        const e = event as any;
+        const clientX = e?.changedTouches?.[0]?.clientX ?? e?.touches?.[0]?.clientX ?? e?.clientX ?? window.innerWidth / 2;
+        const clientY = e?.changedTouches?.[0]?.clientY ?? e?.touches?.[0]?.clientY ?? e?.clientY ?? window.innerHeight / 2;
+        this.degatPos = { x: clientX, y: clientY };
+        this.degatVisible = true;
+        this._timers.push(setTimeout(() => { this.degatVisible = false; }, 600));
 
         if (trou.correct) {
-          // Bonne réponse → +10 pts, manche suivante
+          // Bon mot → +10 pts, cadre vert, manche suivante
           this.repondu = true;
           this.clearTimers();
           this.score += 10;
-          this.showFlash('OK !');
+          this.feedbackColor = 'green';
+          this._timers.push(setTimeout(() => { this.feedbackColor = ''; }, 600));
           this._timers.push(setTimeout(() => this.nouvelleSigne(), 700));
         } else {
-          // Mauvais mot → aucune pénalité, le mot disparaît
+          // Mauvais mot → cadre rouge, perd une vie
           trou.visible = false;
+          this.vies--;
+          this.feedbackColor = 'red';
+          this._timers.push(setTimeout(() => { this.feedbackColor = ''; }, 600));
+          if (this.vies <= 0) {
+            this.clearTimers();
+            this.victoire = false;
+            this.repondu = true;
+            this._timers.push(setTimeout(() => { this.phase = 'fin'; }, 400));
+          }
         }
       },
 

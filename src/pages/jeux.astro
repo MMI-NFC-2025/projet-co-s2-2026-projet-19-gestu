@@ -12,7 +12,7 @@ import arcade from '../assets/icon/arcade_jeux.svg';
     x-init="init()"
   >
 
-    <PageHeader retourHref="/dashboard" retourLabel="Retour au tableau de bord" theme="light" />
+    <PageHeader retourHref="/dashboard" retourLabel="Retour au tableau de bord" theme="light" showLevel={true} />
 
     <!-- Zone centrale : borne d'arcade avec overlays -->
     <main class="relative mx-auto flex flex-1 items-center justify-center" style="width: 100vw; max-width: 36rem;">
@@ -99,6 +99,7 @@ import arcade from '../assets/icon/arcade_jeux.svg';
       xp: 0,
       xpMax: 100,
       xpPercent: 0,
+      niveaux: 1,
       games: [] as any[],
       index: 0,
 
@@ -107,11 +108,16 @@ import arcade from '../assets/icon/arcade_jeux.svg';
       },
 
       async init() {
-        const DEV_MODE = true;
-        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
+        if (!pb.authStore.isValid) { window.location.href = '/login'; return; }
+        const user = pb.authStore.model;
         this.coins = user?.coins ?? 0;
         this.xp = user?.xp ?? 0;
-        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        this.niveaux = user?.niveaux ?? 1;
+        this.xpMax = this.niveaux * 50 + 50;
+        this.xpPercent = 0;
+        setTimeout(() => {
+          this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        }, 300);
 
         try {
           const records = await pb.collection('Mini_jeux').getFullList({ sort: 'ordre', requestKey: null });

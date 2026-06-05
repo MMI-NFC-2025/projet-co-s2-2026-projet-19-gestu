@@ -167,6 +167,27 @@ import gameoverImg from '../../assets/img/gameover.avif';
         class="absolute inset-0 flex flex-col justify-end pb-12 px-8"
         style="background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%);"
       >
+        <!-- Animation XP (victoire seulement) -->
+        <div x-show="victoire" class="flex flex-col items-center mb-4 gap-2">
+          <div
+            x-show="xpGained > 0"
+            x-transition:enter="transition ease-out duration-500"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            style="font-family:'Press Start 2P',monospace;font-size:14px;color:#FFD700;text-shadow:0 0 12px rgba(255,215,0,0.8);"
+            x-text="`+${xpGained} XP`"
+          ></div>
+          <div
+            x-show="leveledUp"
+            x-transition:enter="transition ease-out duration-600"
+            x-transition:enter-start="opacity-0 scale-50"
+            x-transition:enter-end="opacity-100 scale-100"
+            class="px-4 py-2 rounded-full"
+            style="background:linear-gradient(135deg,#FFD700,#FF8C00);font-family:'Press Start 2P',monospace;font-size:10px;color:white;"
+            x-text="`NIVEAU ${newLevel} !`"
+          ></div>
+        </div>
+
         <div class="flex flex-col gap-3 w-full">
           <button
             @click="recommencer()"
@@ -203,6 +224,7 @@ import gameoverImg from '../../assets/img/gameover.avif';
 
 <script>
   import pb from '../../lib/pocketbase.js';
+  import { gainXP } from '../../lib/xp.js';
 
   document.addEventListener('alpine:init', () => {
     (window as any).Alpine.data('bossGame', () => ({
@@ -215,6 +237,9 @@ import gameoverImg from '../../assets/img/gameover.avif';
       question: { mot: '', choix: [] as any[], bonneReponse: 0 },
       reponduIndex: null as number | null,
       victoire: false,
+      xpGained: 0,
+      leveledUp: false,
+      newLevel: 1,
       bonnesReponses: 0,
       mauvaisesReponses: 0,
       degatVisible: false,
@@ -309,6 +334,12 @@ import gameoverImg from '../../assets/img/gameover.avif';
         if (this.pvBoss <= 0) {
           this.victoire = true;
           this.phase = 'fin';
+          try {
+            const r = await gainXP(20);
+            this.xpGained = r.xpGain;
+            this.leveledUp = r.leveledUp;
+            this.newLevel = r.newLevel;
+          } catch {}
           return;
         }
         if (this.pvJoueur <= 0) {
@@ -328,6 +359,8 @@ import gameoverImg from '../../assets/img/gameover.avif';
         this.bonnesReponses = 0;
         this.mauvaisesReponses = 0;
         this.victoire = false;
+        this.xpGained = 0;
+        this.leveledUp = false;
         this.reponduIndex = null;
         this.degatVisible = false;
         this.degatBossVisible = false;

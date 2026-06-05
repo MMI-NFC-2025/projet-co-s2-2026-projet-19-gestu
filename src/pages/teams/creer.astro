@@ -1,0 +1,297 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import retour from '../../assets/icon/fleche_retour.svg';
+import boutonParcourir from '../../assets/icon/boutonparcourir.svg';
+import boutonPublicPrive from '../../assets/icon/boutonpublic_privé.svg';
+import boutonCreer from '../../assets/icon/boutoncréer.svg';
+import ghostPlaceholder from '../../assets/icon/gestu_ghost.svg';
+import rectangle1 from '../../assets/icon/rectangle1.svg';
+import rectangle2 from '../../assets/icon/rectangle2.svg';
+---
+
+<Layout title="Gestu — Créer une team">
+  <div
+    class="relative min-h-screen w-full select-none"
+    style="background: linear-gradient(to bottom, #5B0FD4 0%, #1A006E 100%);"
+    x-data="creerTeam()"
+  >
+
+    <!-- ══ CONTENU FORMULAIRE ══ -->
+    <div class="flex flex-col px-6 pt-12 pb-48 gap-8">
+
+      <!-- Nom -->
+      <div class="flex flex-col gap-2">
+        <label style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:18px;color:white;">Nom</label>
+        <div class="relative w-full">
+          <img src={rectangle1.src} alt="" class="w-full block" style="pointer-events:none;" />
+          <input
+            type="text"
+            x-model="nom"
+            placeholder="Nom de ta team"
+            maxlength="30"
+            class="absolute w-full bg-transparent outline-none text-gray-800 px-4"
+            style="font-family:'Josefin Sans',sans-serif;font-size:15px;top:4px;left:0;right:0;bottom:8px;"
+          />
+        </div>
+      </div>
+
+      <!-- Blazon -->
+      <div class="flex flex-col gap-2">
+        <label style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:18px;color:white;">Blazon</label>
+        <div class="flex items-center gap-4">
+          <!-- Avatar actif / blazon sélectionné -->
+          <div
+            class="flex items-center justify-center rounded-xl overflow-hidden shrink-0"
+            style="width:56px;height:56px;background:rgba(255,255,255,0.12);border:2px solid rgba(255,255,255,0.3);"
+          >
+            <img
+              :src="blazonUrl || activeAvatarUrl || ghostSrc"
+              alt="Avatar"
+              class="w-full h-full object-contain p-1"
+            />
+          </div>
+          <!-- Bouton parcourir -->
+          <button type="button" @click="ouvrirPicker()" class="active:opacity-70 transition-opacity shrink-0">
+            <img src={boutonParcourir.src} alt="Parcourir" style="width:85px;height:42px;object-fit:contain;" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="flex flex-col gap-2">
+        <label style="font-family:'Josefin Sans',sans-serif;font-weight:700;font-size:18px;color:white;">Description</label>
+        <div class="relative w-full">
+          <img src={rectangle2.src} alt="" class="w-full block" style="pointer-events:none;" />
+          <textarea
+            x-model="description"
+            placeholder="Décris ta team…"
+            maxlength="200"
+            class="absolute w-full bg-transparent outline-none resize-none text-gray-800 px-4 py-3"
+            style="font-family:'Josefin Sans',sans-serif;font-size:14px;top:4px;left:0;right:0;bottom:8px;"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Public / Privé -->
+      <div class="flex flex-col gap-2">
+        <div class="relative" style="width:176px;height:47px;">
+          <img src={boutonPublicPrive.src} alt="Public / Privé" style="width:176px;height:47px;display:block;" />
+          <!-- Overlay sombre sur la moitié inactive -->
+          <div
+            x-show="visibilite === 'prive'"
+            class="absolute pointer-events-none rounded-l"
+            style="top:3px;left:3px;width:76px;height:34px;background:rgba(0,0,0,0.35);border-radius:4px 0 0 4px;"
+          ></div>
+          <div
+            x-show="visibilite === 'public'"
+            class="absolute pointer-events-none"
+            style="top:3px;left:86px;width:69px;height:34px;background:rgba(0,0,0,0.35);border-radius:0 4px 4px 0;"
+          ></div>
+          <!-- Zones cliquables invisibles -->
+          <button
+            type="button"
+            @click="visibilite = 'public'"
+            class="absolute top-0 left-0 h-full"
+            style="width:49%;background:transparent;"
+            aria-label="Public"
+          ></button>
+          <button
+            type="button"
+            @click="visibilite = 'prive'"
+            class="absolute top-0 h-full"
+            style="left:49%;right:0;background:transparent;"
+            aria-label="Privé"
+          ></button>
+        </div>
+      </div>
+
+      <!-- Bouton Créer -->
+      <div class="flex justify-center pt-2">
+        <button
+          type="button"
+          @click="soumettre()"
+          :disabled="enCours"
+          class="active:opacity-70 transition-opacity disabled:opacity-50"
+        >
+          <img src={boutonCreer.src} alt="Créer" style="width:110px;height:46px;object-fit:contain;" />
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ══ FLÈCHE RETOUR ══ -->
+    <a
+      href="/teams"
+      class="fixed z-20 flex items-center justify-center transition-opacity active:opacity-60"
+      style="bottom:32px;left:28px;width:44px;height:44px;"
+      aria-label="Retour"
+    >
+      <img src={retour.src} alt="" class="h-7 w-7 object-contain" />
+    </a>
+
+    <!-- ══ PICKER BLAZON (bottom sheet) ══ -->
+    <div
+      x-show="pickerOuvert"
+      class="fixed inset-0 z-40"
+      style="background:rgba(0,0,0,0.6);"
+      @click.self="pickerOuvert = false"
+    >
+      <div
+        class="absolute bottom-0 left-0 right-0 rounded-t-3xl pb-10 pt-5 px-5"
+        style="background:linear-gradient(to bottom,#3208D2,#1C0086);max-height:70vh;overflow-y:auto;"
+      >
+        <div class="mx-auto mb-4 h-1 w-12 rounded-full" style="background:rgba(255,255,255,0.3);"></div>
+
+        <p style="font-family:'Press Start 2P',monospace;font-size:9px;color:white;text-align:center;margin-bottom:16px;">
+          Choisir un blazon
+        </p>
+
+        <!-- Chargement -->
+        <div x-show="loadingAvatars" class="flex justify-center py-6">
+          <div class="h-8 w-8 animate-spin rounded-full border-4 border-purple-300 border-t-transparent"></div>
+        </div>
+
+        <!-- Grille de ghosts -->
+        <div x-show="!loadingAvatars" class="grid grid-cols-4 gap-3">
+          <template x-for="avatar in avatars" :key="avatar.id">
+            <button
+              @click="selectionnerBlazon(avatar)"
+              class="flex items-center justify-center rounded-xl p-2 transition-all active:scale-95"
+              :style="blazonId === avatar.id
+                ? 'background:rgba(255,255,255,0.3);border:2px solid white;'
+                : 'background:rgba(255,255,255,0.1);border:2px solid transparent;'"
+              style="aspect-ratio:1/1;"
+            >
+              <img :src="avatar.imgUrl" :alt="avatar.nom" class="w-full h-full object-contain" />
+            </button>
+          </template>
+          <p
+            x-show="avatars.length === 0"
+            class="col-span-4 text-center py-4"
+            style="font-family:'Josefin Sans',sans-serif;color:rgba(255,255,255,0.5);font-size:13px;"
+          >
+            Aucun avatar possédé
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MESSAGE ERREUR ══ -->
+    <div
+      x-show="erreur !== ''"
+      x-transition:enter="transition duration-200"
+      x-transition:enter-start="opacity-0 -translate-y-2"
+      x-transition:enter-end="opacity-100 translate-y-0"
+      class="fixed top-4 left-4 right-4 z-50 rounded-xl px-4 py-3 text-center"
+      style="background:#7F1D1D;border:1px solid #EF4444;"
+    >
+      <p x-text="erreur" style="font-family:'Josefin Sans',sans-serif;color:white;font-size:13px;"></p>
+    </div>
+
+  </div>
+</Layout>
+
+<script define:vars={{ ghostPlaceholderSrc: ghostPlaceholder.src }}>
+  window.__creerGhostSrc = ghostPlaceholderSrc;
+</script>
+
+<script>
+  import pb from '../../lib/pocketbase.js';
+
+  document.addEventListener('alpine:init', () => {
+    const _ghost = (window as any).__creerGhostSrc ?? '';
+
+    (window as any).Alpine.data('creerTeam', () => ({
+      nom: '',
+      blazonId: '',
+      blazonUrl: '',
+      activeAvatarUrl: '',
+      description: '',
+      visibilite: 'public' as 'public' | 'prive',
+      enCours: false,
+      erreur: '',
+      pickerOuvert: false,
+      loadingAvatars: false,
+      avatars: [] as { id: string; imgUrl: string; nom: string }[],
+      ghostSrc: _ghost,
+
+      async init() {
+        try {
+          const userId = pb.authStore.model?.id;
+          if (!userId) return;
+          const records = await pb.collection('avatars_possedes').getFullList({
+            filter: `joueur = "${userId}"`,
+            expand: 'avatar',
+            requestKey: null,
+          });
+          if (records.length > 0) {
+            const expanded = (records[0] as any).expand?.avatar;
+            if (expanded?.image_avatar) {
+              this.activeAvatarUrl = pb.files.getURL(expanded, expanded.image_avatar);
+            }
+          }
+        } catch {
+          // no active avatar
+        }
+      },
+
+      async ouvrirPicker() {
+        this.pickerOuvert = true;
+        if (this.avatars.length > 0) return;
+
+        this.loadingAvatars = true;
+        try {
+          const records = await pb.collection('Avatars').getFullList({ requestKey: null });
+          this.avatars = records.map((r: any) => ({
+            id: r.id,
+            nom: r.nom_avatar ?? r.id,
+            imgUrl: r.image_avatar ? pb.files.getURL(r, r.image_avatar) : _ghost,
+          }));
+        } catch {
+          this.avatars = [];
+        } finally {
+          this.loadingAvatars = false;
+        }
+      },
+
+      selectionnerBlazon(avatar: { id: string; imgUrl: string }) {
+        this.blazonId = avatar.id;
+        this.blazonUrl = avatar.imgUrl;
+        this.pickerOuvert = false;
+      },
+
+      async soumettre() {
+        if (!this.nom.trim()) {
+          this.erreur = 'Le nom de la team est obligatoire.';
+          setTimeout(() => { this.erreur = ''; }, 3000);
+          return;
+        }
+        const userId = pb.authStore.model?.id;
+        if (!userId) {
+          this.erreur = 'Tu dois être connecté pour créer une team.';
+          setTimeout(() => { this.erreur = ''; }, 3000);
+          return;
+        }
+        this.enCours = true;
+        try {
+          const team = await pb.collection('Teams').create({
+            nom_team: this.nom.trim(),
+            blason: this.blazonId || null,
+            visibilite: this.visibilite,
+            createur: userId,
+            description: this.description.trim(),
+          });
+          await pb.collection('Utilisateurs').update(userId, { team: team.id });
+          window.location.href = `/teams/${team.id}`;
+        } catch (e: any) {
+          console.error('PocketBase create error:', e, e?.data);
+          const details = e?.data ? JSON.stringify(e.data) : '';
+          this.erreur = (e?.message ?? 'Erreur lors de la création.') + (details ? ' — ' + details : '');
+          setTimeout(() => { this.erreur = ''; }, 6000);
+        } finally {
+          this.enCours = false;
+        }
+      },
+    }));
+  });
+</script>

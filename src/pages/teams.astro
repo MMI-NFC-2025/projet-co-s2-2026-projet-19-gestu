@@ -1,88 +1,116 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import BottomNav from '../components/BottomNav.astro';
-import PageHeader from '../components/PageHeader.astro';
+import retour from '../assets/icon/fleche_retour.svg';
+import iconeteam from '../assets/img/iconeteam.avif';
+import ellipseteam from '../assets/img/ellipseteam.avif';
+import boutonCreerTeam from '../assets/icon/boutoncréetateam.svg';
 ---
 
 <Layout title="Gestu — Teams">
   <div
-    class="relative flex h-screen w-full flex-col overflow-hidden"
-    style="background: linear-gradient(180deg, #0D0D3B 0%, #1a0a4a 100%);"
-    x-data="teamsData()"
+    class="relative h-screen w-full overflow-hidden select-none"
+    style="background: linear-gradient(to bottom, #202094 0%, #0A0A2E 100%);"
+    x-data="teamsPage()"
     x-init="init()"
   >
 
-    <PageHeader retourHref="/dashboard" retourLabel="Retour au tableau de bord" />
+    <!-- ══ ELLIPSE fond ══ -->
+    <img
+      src={ellipseteam.src}
+      alt=""
+      class="absolute left-1/2 -translate-x-1/2 pointer-events-none"
+      style="top: -8%; width: 105%; max-width: 480px; opacity: 0.95;"
+      aria-hidden="true"
+    />
 
-    <main class="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+    <!-- ══ CONTENU PRINCIPAL ══ -->
+    <div class="relative z-10 flex h-full flex-col">
 
-      <!-- Titre de section -->
-      <h1 class="mb-5 text-center font-game text-sm text-white">TEAMS</h1>
-
-      <!-- Chargement -->
-      <div x-show="loading" class="flex h-40 items-center justify-center" aria-live="polite" aria-label="Chargement en cours">
-        <div class="h-10 w-10 animate-spin rounded-full border-4 border-purple-400 border-t-transparent"></div>
+      <!-- Zone haute : icône team -->
+      <div class="flex flex-1 items-center justify-center">
+        <img
+          src={iconeteam.src}
+          alt="Équipe"
+          style="width: 70%; max-width: 300px; object-fit: contain;"
+        />
       </div>
 
-      <div x-show="!loading">
+      <!-- Zone basse : barre de recherche + bouton -->
+      <div class="shrink-0 flex flex-col items-center gap-5 px-8 pb-28">
 
-        <!-- ─ Guerres en cours ─ -->
-        <h2 class="mb-3 text-xs font-bold uppercase tracking-widest text-purple-300">Guerres en cours</h2>
-
-        <template x-for="guerre in guerres" :key="guerre.id">
-          <article
-            class="mb-3 rounded-2xl p-4"
-            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);"
+        <!-- Barre de recherche -->
+        <div class="relative w-full">
+          <input
+            type="text"
+            placeholder="Rechercher une team..."
+            x-model="recherche"
+            @keydown.enter="rechercherTeam()"
+            class="w-full rounded-full py-3 pl-5 pr-14 outline-none"
+            style="
+              background: rgba(255,255,255,0.95);
+              font-family: 'Josefin Sans', sans-serif;
+              font-size: 14px;
+              color: #1a1a4e;
+            "
+          />
+          <button
+            @click="rechercherTeam()"
+            class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-opacity active:opacity-60"
+            style="width: 34px; height: 34px; background: #3208D2;"
+            aria-label="Rechercher"
           >
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-sm font-bold text-white" x-text="guerre.nom"></span>
-              <span
-                class="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
-                :class="guerre.statut === 'en_cours' ? 'bg-green-500/20 text-green-300' : 'bg-purple-500/20 text-purple-300'"
-                x-text="guerre.statut === 'en_cours' ? 'En cours' : 'Terminée'"
-              ></span>
-            </div>
-            <p class="mt-1 text-xs text-white/50" x-text="guerre.description"></p>
-          </article>
-        </template>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7"/>
+              <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+            </svg>
+          </button>
+        </div>
 
-        <p
-          x-show="guerres.length === 0"
-          class="py-6 text-center text-xs text-white/30"
-        >Aucune guerre en cours</p>
+        <!-- Bouton Crée ta team -->
+        <a href="/teams/creer" class="active:opacity-70 transition-opacity">
+          <img src={boutonCreerTeam.src} alt="Crée ta team" style="width: 157px; height: 59px; object-fit: contain;" />
+        </a>
 
-        <!-- ─ Amis ─ -->
-        <h2 class="mb-3 mt-6 text-xs font-bold uppercase tracking-widest text-purple-300">Amis</h2>
+      </div>
+    </div>
 
-        <template x-for="ami in amis" :key="ami.id">
-          <div
-            class="mb-2 flex items-center gap-3 rounded-2xl p-3"
-            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);"
-          >
-            <!-- Avatar initiale -->
-            <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-              style="background: #7C3AED;"
-              aria-hidden="true"
-            >
-              <span class="text-sm font-bold text-white" x-text="(ami.pseudo || '?')[0].toUpperCase()"></span>
-            </div>
-            <div>
-              <p class="text-sm font-bold text-white" x-text="ami.pseudo"></p>
-              <p class="text-xs text-white/40" x-text="ami.niveau ? `Niveau ${ami.niveau}` : 'Joueur'"></p>
-            </div>
+    <!-- ══ RÉSULTATS RECHERCHE ══ -->
+    <div
+      x-show="resultats.length > 0"
+      x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0 translate-y-2"
+      x-transition:enter-end="opacity-100 translate-y-0"
+      class="absolute z-30 left-8 right-8 rounded-2xl overflow-hidden"
+      style="bottom: 220px; background: rgba(20,10,60,0.97); border: 1px solid rgba(100,80,255,0.4);"
+    >
+      <template x-for="team in resultats" :key="team.id">
+        <a
+          :href="`/teams/${team.id}`"
+          class="flex items-center gap-3 px-4 py-3 transition-colors active:bg-white/10"
+          style="border-bottom: 1px solid rgba(255,255,255,0.06);"
+        >
+          <span
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-bold text-sm"
+            style="background: #3208D2;"
+            x-text="(team.nom || '?')[0].toUpperCase()"
+          ></span>
+          <div>
+            <p class="text-white text-sm font-bold" x-text="team.nom" style="font-family:'Josefin Sans',sans-serif;"></p>
+            <p class="text-white/50 text-xs" x-text="team.membres + ' membres'" style="font-family:'Josefin Sans',sans-serif;"></p>
           </div>
-        </template>
+        </a>
+      </template>
+    </div>
 
-        <p
-          x-show="amis.length === 0"
-          class="py-6 text-center text-xs text-white/30"
-        >Aucun ami pour l'instant</p>
-
-      </div>
-    </main>
-
-    <BottomNav active="teams" />
+    <!-- ══ FLÈCHE RETOUR ══ -->
+    <a
+      href="/dashboard"
+      class="absolute z-20 flex items-center justify-center transition-opacity active:opacity-60"
+      style="bottom: 32px; left: 28px; width: 44px; height: 44px;"
+      aria-label="Retour"
+    >
+      <img src={retour.src} alt="" class="h-7 w-7 object-contain" />
+    </a>
 
   </div>
 </Layout>
@@ -91,52 +119,27 @@ import PageHeader from '../components/PageHeader.astro';
   import pb from '../lib/pocketbase.js';
 
   document.addEventListener('alpine:init', () => {
-    (window as any).Alpine.data('teamsData', () => ({
-      coins: 0,
-      xp: 0,
-      xpMax: 100,
-      xpPercent: 0,
-      loading: true,
-      guerres: [] as any[],
-      amis: [] as any[],
+    (window as any).Alpine.data('teamsPage', () => ({
+      recherche: '',
+      resultats: [] as { id: string; nom: string; membres: number }[],
 
       async init() {
-        const DEV_MODE = true;
-        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
-        this.coins = user?.coins ?? 0;
-        this.xp = user?.xp ?? 0;
-        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        // TODO: charger les teams suggérées depuis PocketBase (collection Teams)
+      },
 
+      async rechercherTeam() {
+        const q = this.recherche.trim();
+        if (!q) { this.resultats = []; return; }
         try {
-          const [guerresData, amisData] = await Promise.all([
-            pb.collection('Guerres').getFullList({ requestKey: null }),
-            pb.collection('Amis').getFullList({ requestKey: null }),
-          ]);
-
-          this.guerres = guerresData.map((r: any) => ({
-            id: r.id,
-            nom: r.nom ?? 'Guerre',
-            description: r.description ?? '',
-            statut: r.statut ?? 'en_cours',
-          }));
-
-          this.amis = amisData.map((r: any) => ({
-            id: r.id,
-            pseudo: r.pseudo ?? 'Joueur',
-            niveau: r.niveau ?? null,
-          }));
-
+          // TODO: remplacer par vraie requête PocketBase
+          // const records = await pb.collection('Teams').getList(1, 5, {
+          //   filter: `nom ~ "${q}"`,
+          //   requestKey: null,
+          // });
+          // this.resultats = records.items.map(r => ({ id: r.id, nom: r.nom, membres: r.membres ?? 0 }));
+          this.resultats = [];
         } catch {
-          // TODO: remplacer ces données temporaires par les données récupérées depuis PocketBase
-          this.guerres = [
-            { id: '1', nom: 'Guerre des signes', description: 'Défi hebdomadaire en cours', statut: 'en_cours' },
-          ];
-          this.amis = [
-            { id: '1', pseudo: 'Alice', niveau: 5 },
-            { id: '2', pseudo: 'Bob', niveau: 3 },
-          ];
-        } finally {
-          this.loading = false;
+          this.resultats = [];
         }
       },
     }));

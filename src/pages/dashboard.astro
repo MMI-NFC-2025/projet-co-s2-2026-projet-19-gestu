@@ -14,7 +14,7 @@ import ghost from '../assets/icon/ghost_acceuil.svg';
     x-init="init()"
   >
 
-    <PageHeader retourHref="/dashboard" retourLabel="Tableau de bord" />
+    <PageHeader retourHref="/dashboard" retourLabel="Tableau de bord" showLevel={true} />
 
     <!-- Zone centrale : cercles + ghost -->
     <main class="relative flex flex-1 items-center justify-center">
@@ -50,22 +50,25 @@ import ghost from '../assets/icon/ghost_acceuil.svg';
     (window as any).Alpine.data('dashboardData', () => ({
       coins: 0,
       xp: 0,
-      xpMax: 100, // TODO: adapter selon le système de niveaux
+      xpMax: 100,
       xpPercent: 0,
+      niveaux: 1,
 
       async init() {
-        // DEV MODE : bypass auth pour tester sans PocketBase
-        const DEV_MODE = true;
-
-        if (!DEV_MODE && !pb.authStore.isValid) {
+        if (!pb.authStore.isValid) {
           window.location.href = '/login';
           return;
         }
-
-        const user = DEV_MODE ? { pseudo: 'DevUser', coins: 150, xp: 420 } : pb.authStore.model;
+        const user = pb.authStore.model;
         this.coins = user?.coins ?? 0;
         this.xp = user?.xp ?? 0;
-        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        this.niveaux = user?.niveaux ?? 1;
+        this.xpMax = this.niveaux * 50 + 50;
+        // Démarrer à 0 puis animer vers la vraie valeur
+        this.xpPercent = 0;
+        setTimeout(() => {
+          this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        }, 300);
       }
     }));
   });

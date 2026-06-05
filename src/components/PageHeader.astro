@@ -10,24 +10,21 @@ import coinsIcon from '../assets/icon/coins.svg';
 import retourIcon from '../assets/icon/icone_retour_acceuil.svg';
 
 interface Props {
-  /** URL de la page de retour */
   retourHref: string;
-  /** Texte accessible du bouton retour */
   retourLabel: string;
-  /** Thème visuel : 'dark' (fond sombre, défaut) ou 'light' (fond clair) */
   theme?: 'dark' | 'light';
-  /** Classes CSS supplémentaires sur l'élément header */
   extraClass?: string;
+  showLevel?: boolean;
 }
 
-const { retourHref, retourLabel, theme = 'dark', extraClass = '' } = Astro.props;
+const { retourHref, retourLabel, theme = 'dark', extraClass = '', showLevel = false } = Astro.props;
 ---
 
 <!-- TODO: coins, xp et xpMax sont récupérés depuis PocketBase (collection Utilisateurs) via Alpine -->
-<header class:list={['flex items-center justify-between px-4 pt-4', extraClass]}>
+<header class:list={['flex items-center justify-between px-4 pt-4 w-full', extraClass]}>
 
   <!-- Coins (gauche) -->
-  <div class="flex items-center gap-2">
+  <div class="flex items-center gap-2 mr-4">
     <img src={coinsIcon.src} alt="Coins" class="h-9 w-9" />
     <span
       class:list={['text-xl font-bold', theme === 'light' ? 'text-[#0D0D3B]' : 'text-white']}
@@ -35,11 +32,11 @@ const { retourHref, retourLabel, theme = 'dark', extraClass = '' } = Astro.props
     >—</span>
   </div>
 
-  <!-- Barre XP + bouton retour (droite) -->
+  <!-- Barre XP + niveau + bouton retour (droite) -->
   <div class="flex items-center gap-2">
     <div
       class:list={[
-        'h-4 w-36 overflow-hidden rounded-full',
+        'h-4 w-28 overflow-hidden rounded-full',
         theme === 'light' ? 'bg-gestu-bg/20' : 'bg-white/20',
       ]}
       role="progressbar"
@@ -50,12 +47,20 @@ const { retourHref, retourLabel, theme = 'dark', extraClass = '' } = Astro.props
     >
       <div
         class:list={[
-          'h-full rounded-full transition-all',
+          'h-full rounded-full transition-all duration-1000',
           theme === 'light' ? 'bg-[#1F1F8F]' : 'bg-purple-400',
         ]}
         :style="`width: ${xpPercent}%`"
       ></div>
     </div>
+
+    {showLevel && (
+      <span
+        x-text="`${niveaux}`"
+        style="font-family:'Press Start 2P',monospace;font-size:7px;white-space:nowrap;"
+        class:list={[theme === 'light' ? 'text-[#0D0D3B]' : 'text-white']}
+      ></span>
+    )}
 
     <a
       href={retourHref}
