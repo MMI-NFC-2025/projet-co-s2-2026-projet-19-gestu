@@ -56,42 +56,29 @@ import winImg from '../../assets/img/win.avif';
           <template x-for="(carte, i) in cartes" :key="carte.uid">
             <div
               :class="(carte.trouvee || bloque) ? 'pointer-events-none' : 'cursor-pointer'"
-              style="aspect-ratio:3/4;perspective:700px;"
+              style="aspect-ratio:3/4;"
               @click="retournerCarte(i)"
             >
               <!-- Conteneur flip 3D -->
               <div
-                class="relative w-full h-full"
-                :style="(carte.retournee || carte.trouvee)
-                  ? 'transform-style:preserve-3d;transition:transform 0.45s cubic-bezier(.4,0,.2,1);transform:rotateY(180deg);'
-                  : 'transform-style:preserve-3d;transition:transform 0.45s cubic-bezier(.4,0,.2,1);transform:rotateY(0deg);'"
+                class="memo-card-inner"
+                :class="(carte.retournee || carte.trouvee) ? 'is-flipped' : ''"
               >
                 <!-- DOS (visible par défaut) -->
-                <div
-                  class="absolute inset-0 rounded-2xl overflow-hidden"
-                  style="backface-visibility:hidden;border:3px solid #7C3AED;box-shadow:0 4px 16px rgba(124,58,237,0.4);"
-                >
+                <div class="memo-face memo-front" :style="carte.trouvee ? 'border:3px solid #7C3AED;' : 'border:3px solid #7C3AED;'">
                   <img :src="carte.dosUrl" alt="" class="w-full h-full object-cover" />
                 </div>
 
                 <!-- FACE (visible après flip) -->
                 <div
-                  class="absolute inset-0 rounded-2xl overflow-hidden flex flex-col"
-                  style="backface-visibility:hidden;transform:rotateY(180deg);"
+                  class="memo-face memo-back"
                   :style="carte.trouvee
-                    ? 'border:3px solid #22c55e;box-shadow:0 0 16px rgba(34,197,94,0.7);opacity:0.85;'
-                    : 'border:3px solid #A78BFA;box-shadow:0 4px 16px rgba(124,58,237,0.4);'"
+                    ? 'display:flex;flex-direction:column;border:3px solid #22c55e;box-shadow:0 0 16px rgba(34,197,94,0.7);opacity:0.85;'
+                    : 'display:flex;flex-direction:column;border:3px solid #A78BFA;box-shadow:0 4px 16px rgba(124,58,237,0.4);'"
                 >
                   <img :src="carte.imgUrl" :alt="carte.mot" class="w-full flex-1 object-cover min-h-0" />
-                  <!-- Mot en bas -->
-                  <div
-                    class="shrink-0 flex items-center justify-center py-1 px-1"
-                    style="background:rgba(13,13,59,0.9);"
-                  >
-                    <span
-                      x-text="carte.mot"
-                      style="font-family:'Press Start 2P',monospace;font-size:5px;color:white;text-align:center;line-height:1.4;"
-                    ></span>
+                  <div class="shrink-0 flex items-center justify-center py-1 px-1" style="background:rgba(13,13,59,0.9);">
+                    <span x-text="carte.mot" style="font-family:'Press Start 2P',monospace;font-size:5px;color:white;text-align:center;line-height:1.4;"></span>
                   </div>
                 </div>
               </div>
@@ -167,6 +154,30 @@ import winImg from '../../assets/img/win.avif';
 
   </div>
 </Layout>
+
+<style>
+  .memo-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.45s cubic-bezier(.4,0,.2,1);
+  }
+  .memo-card-inner.is-flipped {
+    transform: rotateY(180deg);
+  }
+  .memo-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    overflow: hidden;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .memo-back {
+    transform: rotateY(180deg);
+  }
+</style>
 
 <script>
   import pb from '../../lib/pocketbase.js';

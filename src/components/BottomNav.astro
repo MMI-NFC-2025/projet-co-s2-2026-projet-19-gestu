@@ -24,10 +24,9 @@ const navItems = [
     <a
       href={item.href}
       aria-current={active === item.key ? 'page' : undefined}
-      class={`flex flex-col items-center gap-1 transition-opacity active:scale-95 ${active === item.key ? 'opacity-100' : 'opacity-60'}`}
+      class={`flex flex-col items-center transition-opacity active:scale-95 ${active === item.key ? 'opacity-100' : 'opacity-60'}`}
     >
-      <img src={item.icon.src} alt="" class="h-8 w-8 object-contain" />
-      <span class="text-xs font-semibold text-white">{item.label}</span>
+      <img src={item.icon.src} alt={item.label} class="h-12 w-12 object-contain" />
     </a>
   ))}
 </nav>

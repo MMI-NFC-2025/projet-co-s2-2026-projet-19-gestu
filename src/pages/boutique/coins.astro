@@ -117,11 +117,19 @@ import gestuCoins from '../../assets/icon/gestucoins_boutique.svg';
       _msgTimer: null as ReturnType<typeof setTimeout> | null,
 
       async init() {
-        const DEV_MODE = true;
-        const user = DEV_MODE ? { coins: 150, xp: 420 } : pb.authStore.model;
-        this.coins = user?.coins ?? 0;
-        this.xp = user?.xp ?? 0;
-        this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        if (!pb.authStore.isValid) { window.location.href = '/login'; return; }
+        const userId = String(pb.authStore.model?.id ?? '');
+        if (!userId) { window.location.href = '/login'; return; }
+
+        try {
+          const user = await pb.collection('Utilisateurs').getOne(userId, { requestKey: null });
+          this.coins = user?.coins ?? 0;
+          this.xp = user?.xp ?? 0;
+          this.xpMax = (user?.niveaux ?? 1) * 50 + 50;
+          this.xpPercent = Math.min(Math.round((this.xp / this.xpMax) * 100), 100);
+        } catch {
+          this.coins = pb.authStore.model?.coins ?? 0;
+        }
 
         try {
           const records = await pb.collection('Offres_coins').getFullList({ sort: 'prix', requestKey: null });
@@ -133,20 +141,30 @@ import gestuCoins from '../../assets/icon/gestucoins_boutique.svg';
             populaire: r.populaire ?? false,
           }));
         } catch {
-          // TODO: remplacer ces données temporaires par les données récupérées depuis PocketBase
           this.offres = [
-            { id: '1', quantite: 100,  prix: '0,99',  bonus: '',             populaire: false },
-            { id: '2', quantite: 300,  prix: '2,49',  bonus: '+50 bonus',    populaire: true  },
-            { id: '3', quantite: 700,  prix: '4,99',  bonus: '+150 bonus',   populaire: false },
-            { id: '4', quantite: 1500, prix: '9,99',  bonus: '+500 bonus',   populaire: false },
+            { id: '1', quantite: 100,  prix: '0,99',  bonus: '',           populaire: false },
+            { id: '2', quantite: 300,  prix: '2,49',  bonus: '+50 bonus',  populaire: true  },
+            { id: '3', quantite: 700,  prix: '4,99',  bonus: '+150 bonus', populaire: false },
+            { id: '4', quantite: 1500, prix: '9,99',  bonus: '+500 bonus', populaire: false },
           ];
         }
       },
 
-      acheter(offre: any) {
-        // TODO: connecter au système de paiement et mettre à jour PocketBase
-        this.coins += offre.quantite;
+      async acheter(offre: any) {
+        const newCoins = this.coins + offre.quantite;
+        this.coins = newCoins;
         this.showMessage(`+${offre.quantite} coins ajoutés !`, 'success');
+        if (pb.authStore.isValid) {
+          const userId = String(pb.authStore.model?.id ?? '');
+          if (userId) {
+            try {
+              await pb.collection('Utilisateurs').update(userId, { coins: newCoins }, { requestKey: null });
+              pb.authStore.save(pb.authStore.token, pb.authStore.model!);
+            } catch (e) {
+              console.warn('Impossible de sauvegarder les coins:', e);
+            }
+          }
+        }
       },
 
       showMessage(msg: string, type: 'success' | 'error') {
